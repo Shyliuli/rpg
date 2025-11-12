@@ -67,14 +67,21 @@ function isEventUnlocked(event) {
 }
 
 function relicDropMultiplierForDifficulty(quality) {
-  if (difficultyLevel <= 9) return 1;
-  if (quality === 'legendary') {
-    return 1 + Math.max(0, difficultyLevel - 9) * 0.25;
+  let bonus = 0;
+  if (difficultyLevel >= 9) {
+    const stepsMid = Math.min(Math.max(difficultyLevel, 9), 11) - 8;
+    if (stepsMid > 0) {
+      if (quality === 'epic') bonus += stepsMid * 0.02;
+      if (quality === 'legendary') bonus += stepsMid * 0.01;
+    }
   }
-  if (quality === 'epic') {
-    return 1 + Math.max(0, difficultyLevel - 9) * 0.15;
+  if (difficultyLevel >= 12) {
+    const stepsHigh = difficultyLevel - 11;
+    if (quality === 'rare') bonus += stepsHigh * 0.1;
+    if (quality === 'epic') bonus += stepsHigh * 0.01;
+    if (quality === 'legendary') bonus += stepsHigh * 0.02;
   }
-  return 1;
+  return 1 + bonus;
 }
 
 /* Hero definitions */
@@ -1196,27 +1203,49 @@ function updatePlayerStats(state) {
   const hero = HEROES.find((h) => h.id === state.player.heroId);
   if (!hero) return;
   const { level } = state.player;
-  const derived = {};
   const applyFormula = (stat) =>
     Math.floor(hero.stats[stat].base + hero.stats[stat].per * level);
-  derived.maxHp = applyFormula('hp') + state.player.permanent.hpFlat;
-  derived.attack = applyFormula('attack') + state.player.permanent.attackFlat;
-  derived.defense = applyFormula('defense') + state.player.permanent.defenseFlat;
-  derived.resist = applyFormula('resist') + state.player.permanent.resistFlat;
-  derived.maxMana = applyFormula('mana') + state.player.permanent.manaFlat;
-  derived.critChance = 0.05;
-  derived.critDamage = 0.5;
-  derived.dodge = 0;
-  derived.lifeSteal = 0;
+  const baseStats = {
+    maxHp: applyFormula('hp') + state.player.permanent.hpFlat,
+    attack: applyFormula('attack') + state.player.permanent.attackFlat,
+    defense: applyFormula('defense') + state.player.permanent.defenseFlat,
+    resist: applyFormula('resist') + state.player.permanent.resistFlat,
+    maxMana: applyFormula('mana') + state.player.permanent.manaFlat
+  };
+  const derived = {
+    critChance: 0.05,
+    critDamage: 0.5,
+    dodge: 0,
+    lifeSteal: 0
+  };
 
   const relicMods = aggregateRelicBonuses(state.player);
   const statKeys = ['maxHp', 'attack', 'defense', 'resist', 'maxMana'];
   statKeys.forEach((key) => {
-    const percentKey = key === 'maxHp' ? 'hpPercent' : key === 'attack' ? 'attackPercent' : key === 'defense' ? 'defensePercent' : key === 'resist' ? 'resistPercent' : 'manaPercent';
-    const flatKey = key === 'maxHp' ? 'hpFlat' : key === 'attack' ? 'attackFlat' : key === 'defense' ? 'defenseFlat' : key === 'resist' ? 'resistFlat' : 'manaFlat';
+    const percentKey =
+      key === 'maxHp'
+        ? 'hpPercent'
+        : key === 'attack'
+        ? 'attackPercent'
+        : key === 'defense'
+        ? 'defensePercent'
+        : key === 'resist'
+        ? 'resistPercent'
+        : 'manaPercent';
+    const flatKey =
+      key === 'maxHp'
+        ? 'hpFlat'
+        : key === 'attack'
+        ? 'attackFlat'
+        : key === 'defense'
+        ? 'defenseFlat'
+        : key === 'resist'
+        ? 'resistFlat'
+        : 'manaFlat';
     const percentBonus = relicMods[percentKey] || 0;
     const flatBonus = relicMods[flatKey] || 0;
-    derived[key] = Math.floor(derived[key] * (1 + percentBonus) + flatBonus);
+    const additive = baseStats[key] + flatBonus;
+    derived[key] = Math.floor(additive * (1 + percentBonus));
   });
 
   if (relicMods.allStatsPercent) {
