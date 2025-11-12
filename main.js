@@ -1022,6 +1022,7 @@ const overlayBody = document.getElementById('overlay-body');
 const statusFlags = document.getElementById('status-flags');
 const difficultyLabel = document.getElementById('difficulty-label');
 const changeDifficultyBtn = document.getElementById('change-difficulty');
+const dropRateLabel = document.getElementById('drop-rate-label');
 
 /* Initialization */
 function init() {
@@ -1114,6 +1115,33 @@ function updateDifficultyLabel() {
   if (difficultyLabel) {
     difficultyLabel.textContent = `n${difficultyLevel}`;
   }
+  updateDropRateLabel();
+}
+
+function getDropBonusPercentages() {
+  let rare = 0;
+  let epic = 0;
+  let legendary = 0;
+  if (difficultyLevel >= 9) {
+    const mid = Math.min(Math.max(difficultyLevel, 9), 11) - 8;
+    if (mid > 0) {
+      epic += mid * 2;
+      legendary += mid * 1;
+    }
+  }
+  if (difficultyLevel >= 12) {
+    const high = difficultyLevel - 11;
+    rare += high * 10;
+    epic += high * 1;
+    legendary += high * 2;
+  }
+  return { rare, epic, legendary };
+}
+
+function updateDropRateLabel() {
+  if (!dropRateLabel) return;
+  const { rare, epic, legendary } = getDropBonusPercentages();
+  dropRateLabel.textContent = `稀有${rare >= 0 ? '+' : ''}${rare}%，史诗${epic >= 0 ? '+' : ''}${epic}%，传说${legendary >= 0 ? '+' : ''}${legendary}%`;
 }
 
 function renderHeroOptions() {

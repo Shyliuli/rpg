@@ -72,6 +72,12 @@ body::before {
   color: var(--accent);
 }
 
+.drop-banner {
+  margin-top: 0.25rem;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
 .hero-header h1 {
   margin: 0.2rem 0 0.6rem;
   font-size: clamp(2.5rem, 5vw, 3.5rem);
