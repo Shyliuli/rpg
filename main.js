@@ -193,7 +193,7 @@ const RELICS = [
     id: 'lichPhylactery',
     name: '巫妖的命匣',
     quality: 'rare',
-    description: '法抗+15，击杀后回复敌人5%最大生命'
+    description: '法抗+15，击杀后回复敌人5%最大生命，并无视5点法抗'
   },
   {
     id: 'agileBoots',
@@ -205,7 +205,7 @@ const RELICS = [
     id: 'arcaneCodex',
     name: '奥术法典',
     quality: 'rare',
-    description: '技能法术伤害+45%'
+    description: '技能法术伤害+45%，命中后额外降低敌人10点法抗'
   },
   {
     id: 'berserkerSoul',
@@ -247,13 +247,13 @@ const RELICS = [
     id: 'preemptiveStrike',
     name: '先发制人',
     quality: 'rare',
-    description: '战斗开始70%概率眩晕敌人'
+    description: '战斗开始40%概率眩晕敌人，30%概率使敌人攻击力-50%（2回合）'
   },
   {
     id: 'sourceOfLife',
     name: '生命之源',
     quality: 'rare',
-    description: '治疗效果+65%'
+    description: '治疗效果+35%'
   },
   {
     id: 'fortress',
@@ -319,7 +319,7 @@ const RELICS = [
     id: 'elementHeart',
     name: '元素之心',
     quality: 'epic',
-    description: '攻击+25%，造成伤害有15%概率附加60%法术伤害'
+    description: '攻击+25%，造成伤害有15%概率附加60%法术伤害，并降低敌人15点法抗、20点攻击'
   },
   {
     id: 'deathEye',
@@ -343,7 +343,7 @@ const RELICS = [
     id: 'sunEmblem',
     name: '太阳徽章',
     quality: 'epic',
-    description: '每回合开始对敌人造成30%攻击力法术伤害'
+    description: '每回合开始对敌人造成45%攻击力法术伤害'
   },
   {
     id: 'chaosRing',
@@ -373,13 +373,13 @@ const RELICS = [
     id: 'ruination',
     name: '破败',
     quality: 'legendary',
-    description: '攻击附带8%最大生命的法术伤害'
+    description: '攻击附带8%最大生命的法术伤害，并降低敌人50点防御'
   },
   {
     id: 'genesisStaff',
     name: '创世之杖',
     quality: 'legendary',
-    description: '法术伤害+40%，技能20%概率释放两次'
+    description: '法术伤害+40%，忽视30%法抗，技能20%概率释放两次'
   },
   {
     id: 'greed',
@@ -416,6 +416,18 @@ const RELICS = [
     name: '命运庇佑',
     quality: 'legendary',
     description: '战斗开始获得3次绝境抵挡，每次将伤害上限限定为当前生命的30%，耗尽后恢复满血并清除一个负面状态'
+  },
+  {
+    id: 'dreamRelic',
+    name: '梦奇物',
+    quality: 'legendary',
+    description: '每回合随机释放一个技能（蓝量消耗减半）'
+  },
+  {
+    id: 'blackTulip',
+    name: '黑色郁金香',
+    quality: 'epic',
+    description: '未释放技能的回合结束后，下一次技能获得+30%攻击（可叠至120%），释放技能时清零并享受加成'
   }
 ];
 
@@ -437,17 +449,17 @@ const RELIC_EFFECTS = {
   explorerMap: { goldBonus: 0.1 },
   shieldEmitter: { battleShieldPercent: 0.25, battleShieldDuration: 2 },
   dragonScale: { defenseFlat: 35, armorPen: 15 },
-  lichPhylactery: { resistFlat: 15, healOnKill: 0.05 },
+  lichPhylactery: { resistFlat: 15, healOnKill: 0.05, magicPenFlat: 5 },
   agileBoots: { dodgeChance: 0.1, empowerOnDodge: 0.6 },
-  arcaneCodex: { skillMagicBonus: 0.45 },
+  arcaneCodex: { skillMagicBonus: 0.45, skillResistShred: 10 },
   berserkerSoul: { berserkerStacks: true },
   eliteHunter: { damageVsElite: 0.4, damageVsNormal: -0.1 },
   manaTide: { manaPerTurn: 20, spellManaRefund: 10 },
   bloodthirstBlade: { basicAttackLeech: 0.25 },
   thornArmor: { thornsPercent: 0.15 },
   wisdomBook: { expBonus: 0.35 },
-  preemptiveStrike: { battleStartStunChance: 0.7 },
-  sourceOfLife: { healingBonus: 0.65 },
+  preemptiveStrike: { battleStartStunChance: 0.4, preemptiveWeakenChance: 0.3 },
+  sourceOfLife: { healingBonus: 0.35 },
   fortress: { defensePercent: 0.35, hpPercent: 0.25, attackPercent: -0.05 },
   heartOfRage: { attackPercent: 1.2, hpPercent: 0.55, nullifyDefense: true },
   adventureMap: { roamBattleDelta: 0.25, battleExpBonus: 0.2, dropUpgradeChance: 0.05 },
@@ -458,19 +470,25 @@ const RELIC_EFFECTS = {
   revengeSpirit: { lowHpBuff: true },
   timeHourglass: { deathSave: 'fullRevive' },
   immortalWard: { deathSave: 'immortalWard' },
-  elementHeart: { attackPercent: 0.25, bonusMagicProc: { chance: 0.15, ratio: 0.6 } },
+  elementHeart: {
+    attackPercent: 0.25,
+    bonusMagicProc: { chance: 0.15, ratio: 0.6 },
+    elementHeartDebuff: true
+  },
   deathEye: { critChance: 0.15, critDamage: 0.8 },
   warBanner: { attackPercent: 0.9, critChance: 0.45, hpPercent: -0.2 },
   frostCore: { freezeOnHit: 0.3 },
-  sunEmblem: { turnStartMagic: 0.3 },
+  sunEmblem: { turnStartMagic: 0.45 },
   chaosRing: { enemyWeakenPercent: 0.15 },
   bloodPrince: { lifeSteal: 0.4 },
   destiny: { critChance: 0.2, destinyProc: true },
   epiphanyCrystal: { allStatsPercent: 0.1, xpFixed: 1500, bonusLevels: 10 },
-  ruination: { ruinDamage: 0.08 },
-  genesisStaff: { magicDamageBonus: 0.4, skillDoubleChance: 0.2 },
+  ruination: { ruinDamage: 0.08, defenseShred: 50 },
+  genesisStaff: { magicDamageBonus: 0.4, magicPenPercent: 0.3, skillDoubleChance: 0.2 },
   greed: { goldBonus: 1.0, shopDiscount: 0.5, greedAttack: true },
   omniRing: { allStatsPercent: 0.15, epicBorrowCount: 2 },
+  dreamRelic: { dreamCaster: true },
+  blackTulip: { blackTulip: true },
   steelResolve: { steelResolve: true },
   eternalEmber: { eternalEmber: true },
   starlitBastion: { starlitBastion: true },
@@ -551,7 +569,7 @@ const ELITE_ENEMIES = [
     stats: (L) => ({
       hp: Math.floor(40 + 32 * L + 40 * Math.pow(1.08, L)),
       attack: Math.floor(16 + 3.5 * L + 8 * Math.pow(1.1, L)),
-      defense: Math.floor(38 + 2.4 * Math.pow(1.05, L)),
+      defense: Math.floor(24 + 2.4 * Math.pow(1.05, L)),
       resist: Math.floor(28 + 2.5 * L),
       type: 'physical'
     }),
@@ -595,13 +613,16 @@ const HEART_DEMON = {
   name: '心魔幻影',
   description: '复制玩家属性的最终考验。',
   baseRewards: { exp: { base: 200, per: 0 }, gold: { base: 200, per: 0 } },
-  stats: (player) => ({
-    hp: Math.floor(player.stats.maxHp * 1.2),
-    attack: Math.floor(player.stats.attack * 1.1),
-    defense: player.stats.defense,
-    resist: player.stats.resist,
-    type: 'mirror'
-  })
+  stats: (player) => {
+    const L = player.level;
+    return {
+      hp: Math.floor(player.stats.maxHp * 1.2 + 0.8 * L),
+      attack: Math.floor(player.stats.attack * 1.1 + 0.4 * L),
+      defense: Math.floor(player.stats.defense + 0.2 * L),
+      resist: Math.floor(player.stats.resist + 0.2 * L),
+      type: 'mirror'
+    };
+  }
 };
 
 /* Events */
@@ -892,7 +913,8 @@ const defaultState = () => ({
   history: [],
   flags: {
     firstEventShown: false,
-    meditationRisk: false
+    meditationRisk: false,
+    epiphanyGranted: false
   }
 });
 
@@ -1042,7 +1064,10 @@ function selectHero(heroId) {
     temporary: {},
     cooldowns: {},
     pendingDamageReduction: 0,
-    pendingBuffs: []
+    pendingBuffs: [],
+    blackTulipStacks: 0,
+    usedManualSkillThisTurn: false,
+    usedManualSkillLastTurn: false
   };
   gameState.player = player;
   updatePlayerStats(gameState);
@@ -1143,6 +1168,14 @@ function updatePlayerStats(state) {
   state.player.stats.ruinDamage = relicMods.ruinDamage || 0;
   state.player.stats.epicBorrowCount = relicMods.epicBorrowCount || 0;
   state.player.stats.xpFixed = relicMods.xpFixed || null;
+  state.player.stats.magicPenFlat = relicMods.magicPenFlat || 0;
+  state.player.stats.magicPenPercent = relicMods.magicPenPercent || 0;
+  state.player.stats.skillResistShred = relicMods.skillResistShred || 0;
+  state.player.stats.elementHeartDebuff = !!relicMods.elementHeartDebuff;
+  state.player.stats.ruinDefenseShred = relicMods.defenseShred || 0;
+  state.player.stats.preemptiveWeakenChance = relicMods.preemptiveWeakenChance || 0;
+  state.player.stats.dreamRelic = !!relicMods.dreamCaster;
+  state.player.stats.blackTulip = !!relicMods.blackTulip;
   state.player.stats.steelResolve = !!relicMods.steelResolve;
   state.player.stats.eternalEmber = !!relicMods.eternalEmber;
   state.player.stats.starlitBastion = !!relicMods.starlitBastion;
@@ -1545,6 +1578,38 @@ function triggerEvent() {
   };
 }
 
+function triggerAscensionEvent() {
+  const event = {
+    id: 'ascensionTrial',
+    name: '飞升幻境',
+    description: '心魔低语，你可选择醒来或迎战。',
+    options: [
+      {
+        id: 'wake',
+        label: '醒来（离开幻境）',
+        resolve: (state) => {
+          pushLog('你选择醒来，心魔的声音渐渐远去。');
+          return true;
+        }
+      },
+      {
+        id: 'battle',
+        label: '迎战心魔',
+        resolve: (state) => {
+          startBattle(state, spawnHeartDemon());
+          return false;
+        }
+      }
+    ]
+  };
+  gameState.encounter = {
+    type: 'event',
+    title: event.name,
+    event
+  };
+  updateUI();
+}
+
 function handleMeditate() {
   const player = gameState.player;
   const xpCost = 200;
@@ -1559,8 +1624,8 @@ function handleMeditate() {
     pushLog('心魔侵袭！精英战斗来临。');
     startBattle(gameState, spawnEnemyFrom(randomChoice(ELITE_ENEMIES)));
   } else if (Math.random() < 0.15) {
-    pushLog('飞升事件出现，挑战心魔幻影。');
-    startBattle(gameState, spawnHeartDemon());
+    triggerAscensionEvent();
+    return;
   } else {
     gameState.encounter = null;
   }
@@ -1658,6 +1723,9 @@ function startBattle(state, enemy) {
     playerShieldDuration: 0,
     openingStrike: !!enemy.openingStrike
   };
+  state.player.usedManualSkillThisTurn = false;
+  state.player.usedManualSkillLastTurn = false;
+  state.player.blackTulipStacks = state.player.blackTulipStacks || 0;
   setupBattleBonuses(state);
   pushLog(`遭遇 ${enemy.name}！`);
   updateUI();
@@ -1719,6 +1787,10 @@ function setupBattleBonuses(state) {
     enemy.maxHp = Math.floor(enemy.maxHp * (1 - debuff));
     enemy.currentHp = Math.min(enemy.currentHp, enemy.maxHp);
     pushBattleLog('混沌戒指削弱了敌人。');
+  }
+  if (player.stats.preemptiveWeakenChance && Math.random() < player.stats.preemptiveWeakenChance) {
+    battle.enemyAttackPenalty = { turns: 2, multiplier: 0.5 };
+    pushBattleLog('先发制人压制敌人，攻击力骤降。');
   }
   if (player.stats.epicBorrowCount > 0) {
     const epicRelics = RELICS.filter((r) => r.quality === 'epic');
@@ -1819,8 +1891,12 @@ function resolveAttackPattern(pattern, isSkill, options = {}) {
   const berserkBonus = stats.berserker
     ? clamp(Math.floor((1 - player.currentHp / player.stats.maxHp) / 0.1) * 0.08, 0, 0.8)
     : 0;
+  const blackTulipBonus = options.blackTulipBonus || 0;
+  const attackMultiplier = 1 + blackTulipBonus;
   const attackPower =
-    stats.attack * (1 + attackBuff + (player.tempEmpower || 0) + lowHpActive + berserkBonus);
+    stats.attack *
+    (1 + attackBuff + (player.tempEmpower || 0) + lowHpActive + berserkBonus) *
+    attackMultiplier;
   let totalDamage = 0;
   let manaRefund = 0;
   hits.forEach((hit) => {
@@ -1831,7 +1907,11 @@ function resolveAttackPattern(pattern, isSkill, options = {}) {
       baseDamage += pattern.flatBonus;
     }
     if (type === 'magic') {
-      baseDamage = applyMagicDamage(baseDamage, enemy.resist);
+      const pen = {
+        percent: stats.magicPenPercent || 0,
+        flat: stats.magicPenFlat || 0
+      };
+      baseDamage = applyMagicDamage(baseDamage, enemy.resist, pen);
       baseDamage *= 1 + (stats.magicDamageBonus || 0);
       if (isSkill) {
         baseDamage *= 1 + (stats.skillMagicBonus || 0);
@@ -1884,6 +1964,13 @@ function resolveAttackPattern(pattern, isSkill, options = {}) {
       const healAmount = Math.floor(baseDamage * stats.basicAttackLeech);
       healPlayer(healAmount);
     }
+    applyOnHitDebuffs(enemy, {
+      elementHeart: stats.elementHeartDebuff,
+      ruinDefenseShred: stats.ruinDefenseShred,
+      skillResistShred: options.skillResistShred,
+      damageDealt: baseDamage,
+      attackType
+    });
   });
   pushBattleLog(`造成${totalDamage}点伤害。`);
   if (manaRefund > 0) {
@@ -1912,6 +1999,48 @@ function resolveAttackPattern(pattern, isSkill, options = {}) {
   }
 }
 
+function applyOnHitDebuffs(enemy, context) {
+  if (!enemy || enemy.currentHp <= 0) return;
+  const logs = [];
+  if (context.elementHeart) {
+    const prevResist = enemy.resist;
+    const prevAttack = enemy.attack;
+    enemy.resist = Math.max(0, enemy.resist - 15);
+    enemy.attack = Math.max(0, enemy.attack - 20);
+    if (enemy.resist !== prevResist || enemy.attack !== prevAttack) {
+      logs.push('元素之心蚕食敌人（法抗-15，攻击-20）');
+    }
+  }
+  if (context.ruinDefenseShred) {
+    const prevDefense = enemy.defense;
+    enemy.defense = Math.max(0, enemy.defense - context.ruinDefenseShred);
+    if (enemy.defense !== prevDefense) {
+      logs.push(`破败侵蚀，敌人防御-${context.ruinDefenseShred}`);
+    }
+  }
+  if (context.skillResistShred) {
+    const prevResist = enemy.resist;
+    enemy.resist = Math.max(0, enemy.resist - context.skillResistShred);
+    if (enemy.resist !== prevResist) {
+      logs.push(`奥术法典削弱敌人法抗${context.skillResistShred}点`);
+    }
+  }
+  logs.forEach((msg) => pushBattleLog(msg));
+}
+
+function handleBlackTulipStart(player) {
+  if (!player.stats.blackTulip) return;
+  const prev = player.blackTulipStacks || 0;
+  if (!player.usedManualSkillLastTurn) {
+    player.blackTulipStacks = clamp(prev + 0.3, 0, 1.2);
+    if (player.blackTulipStacks !== prev && player.blackTulipStacks > 0) {
+      pushBattleLog(`黑色郁金香增益累积至${Math.round(player.blackTulipStacks * 100)}%。`);
+    }
+  }
+  player.usedManualSkillLastTurn = false;
+  player.usedManualSkillThisTurn = false;
+}
+
 function applyBattleMultipliers(baseDamage, tier) {
   const stats = gameState.player.stats;
   let damage = baseDamage;
@@ -1937,8 +2066,17 @@ function applyPhysicalDamage(baseDamage, defense) {
   return Math.max(Math.floor(reduced), Math.floor(baseDamage * 0.05));
 }
 
-function applyMagicDamage(base, resist) {
-  const multiplier = Math.max(1 - resist / 100, 0.05);
+function applyMagicDamage(base, resist, penetration) {
+  let effectiveResist = resist;
+  if (penetration) {
+    if (penetration.percent) {
+      effectiveResist = Math.max(0, Math.floor(effectiveResist * (1 - penetration.percent)));
+    }
+    if (penetration.flat) {
+      effectiveResist = Math.max(0, effectiveResist - penetration.flat);
+    }
+  }
+  const multiplier = Math.max(1 - effectiveResist / 100, 0.05);
   return Math.floor(base * multiplier);
 }
 
@@ -1970,6 +2108,8 @@ function endPlayerTurn() {
     return;
   }
   const battle = gameState.encounter;
+  gameState.player.usedManualSkillLastTurn = gameState.player.usedManualSkillThisTurn;
+  gameState.player.usedManualSkillThisTurn = false;
   applyTurnStartEffects('enemy');
   if (!gameState.encounter || gameState.encounter.type !== 'battle') {
     return;
@@ -2008,6 +2148,7 @@ function executeEnemyAttack() {
   const player = gameState.player;
   const enemy = gameState.encounter.enemy;
   const hits = enemy.hits || 1;
+  const penalty = gameState.encounter.enemyAttackPenalty;
   const dodgeBuff = getBuffValue(gameState.encounter.playerBuffs, 'dodge');
   let total = 0;
   for (let i = 0; i < hits; i++) {
@@ -2018,6 +2159,9 @@ function executeEnemyAttack() {
     } else {
       const base = enemy.attack * (enemy.modifier || 1);
       damageValue = applyPhysicalDamage(base, player.stats.defense);
+    }
+    if (penalty?.turns > 0) {
+      damageValue = Math.floor(damageValue * penalty.multiplier);
     }
     const dodgeChance = clamp(player.stats.dodge + dodgeBuff, 0, 0.9);
     if (Math.random() < dodgeChance) {
@@ -2047,6 +2191,12 @@ function executeEnemyAttack() {
     }
   }
   pushBattleLog(`${enemy.name}造成${total}点伤害。`);
+  if (penalty?.turns > 0) {
+    penalty.turns -= 1;
+    if (penalty.turns <= 0) {
+      delete gameState.encounter.enemyAttackPenalty;
+    }
+  }
   if (player.currentHp <= 0) {
     concludeBattle(false);
   }
@@ -2054,7 +2204,10 @@ function executeEnemyAttack() {
 
 function performOpeningStrike(enemy) {
   const base = enemy.attack * 2;
-  const damage = applyPhysicalDamage(base, gameState.player.stats.defense);
+  const damage =
+    enemy.type === 'magic'
+      ? applyMagicDamage(base, gameState.player.stats.resist)
+      : applyPhysicalDamage(base, gameState.player.stats.defense);
   applyDamageToPlayer(gameState, damage);
   pushBattleLog(`${enemy.name}发动惊喜一击，造成${damage}点伤害！`);
 }
@@ -2127,39 +2280,74 @@ function useSkill(index) {
   const hero = HEROES.find((h) => h.id === gameState.player.heroId);
   const skill = hero.skills[index];
   if (!skill) return;
-  const manaStatus = getPlayerStatus(gameState.player, 'manaDisorder');
+  const player = gameState.player;
+  const manaStatus = getPlayerStatus(player, 'manaDisorder');
   const manaCost = skill.cost + (manaStatus ? 10 : 0);
-  if (gameState.player.currentMana < manaCost) {
+  if (player.currentMana < manaCost) {
     pushBattleLog('蓝量不足。');
     return;
   }
-  gameState.player.currentMana -= manaCost;
-  executeSkillEffect(skill);
-  const doubleChance = gameState.player.stats.skillDoubleChance || 0;
+  let blackTulipBonus = 0;
+  if (player.stats.blackTulip && player.blackTulipStacks) {
+    blackTulipBonus = player.blackTulipStacks;
+    player.blackTulipStacks = 0;
+    pushBattleLog(`黑色郁金香绽放，技能增益+${Math.round(blackTulipBonus * 100)}%。`);
+  }
+  player.usedManualSkillThisTurn = true;
+  player.currentMana -= manaCost;
+  const extra = {
+    markManual: true,
+    blackTulipBonus,
+    skillResistShred: player.stats.skillResistShred || 0
+  };
+  executeSkillEffect(skill, false, extra);
+  if (!gameState.encounter || gameState.encounter.type !== 'battle') {
+    return;
+  }
+  const doubleChance = player.stats.skillDoubleChance || 0;
   if (doubleChance > 0 && Math.random() < doubleChance) {
     pushBattleLog('创世之杖共鸣，技能再次发动！');
-    executeSkillEffect(skill, true);
+    executeSkillEffect(skill, true, extra);
   }
 }
 
-function executeSkillEffect(skill, isEcho = false) {
+function executeSkillEffect(skill, isEcho = false, extra = {}) {
+  const attackOptions = {
+    isSkill: true,
+    blackTulipBonus: extra.blackTulipBonus || 0,
+    skillResistShred: extra.skillResistShred || 0
+  };
+  if (extra.markManual && !isEcho) {
+    gameState.player.usedManualSkillThisTurn = true;
+  }
   if (skill.id === 'chargeUp') {
     addTemporaryBuff(gameState, { type: 'attack', value: 0.3, duration: 3 });
-    pushBattleLog('进入蓄力状态，攻击提升。');
+    gameState.player.pendingDamageReduction = clamp(
+      (gameState.player.pendingDamageReduction || 0) + 0.15,
+      0,
+      0.45
+    );
+    healPlayer(Math.floor(gameState.player.stats.maxHp * 0.05));
+    pushBattleLog('进入蓄力状态，攻防双栖，回复少量生命。');
   } else if (skill.id === 'bullRush') {
     const extra = Math.floor(gameState.player.stats.maxHp * 0.15);
     resolveAttackPattern(
       { type: 'physical', hits: [{ ratio: 1.5 }], flatBonus: extra },
-      true
+      true,
+      attackOptions
     );
     applyDamageToPlayer(gameState, Math.floor(gameState.player.stats.maxHp * 0.05));
   } else if (skill.id === 'backstab') {
-    resolveAttackPattern({ type: 'physical', hits: [{ ratio: 0.85 }, { ratio: 0.85 }] }, true);
+    resolveAttackPattern(
+      { type: 'physical', hits: [{ ratio: 0.85 }, { ratio: 0.85 }] },
+      true,
+      attackOptions
+    );
   } else if (skill.id === 'nimble') {
     addTemporaryBuff(gameState, { type: 'dodge', value: 0.7, duration: 2 });
     pushBattleLog('疾速如风，闪避大幅提升。');
   } else if (skill.id === 'meteor') {
-    resolveAttackPattern({ type: 'magic', hits: [{ ratio: 3.25 }] }, true);
+    resolveAttackPattern({ type: 'magic', hits: [{ ratio: 3.25 }] }, true, attackOptions);
     if (!isEcho) {
       gameState.player.stunned = 1;
       pushBattleLog('魔力反噬，下一回合无法行动。');
@@ -2184,10 +2372,11 @@ function addTemporaryBuff(state, buff) {
 }
 
 function applyTurnStartEffects(actor) {
-  const battle = gameState.encounter;
-  if (!battle || battle.type !== 'battle') return;
+  if (!gameState.encounter || gameState.encounter.type !== 'battle') return;
   const player = gameState.player;
+  let battle = gameState.encounter;
   if (actor === 'player') {
+    handleBlackTulipStart(player);
     if (player.stats.manaPerTurn) {
       player.currentMana = clamp(
         player.currentMana + player.stats.manaPerTurn,
@@ -2203,8 +2392,17 @@ function applyTurnStartEffects(actor) {
         concludeBattle(true);
         return;
       }
+      if (!gameState.encounter || gameState.encounter.type !== 'battle') return;
+      battle = gameState.encounter;
+    }
+    if (player.stats.dreamRelic) {
+      triggerDreamRelicSkill();
+      if (!gameState.encounter || gameState.encounter.type !== 'battle') return;
+      battle = gameState.encounter;
     }
   }
+  battle = gameState.encounter;
+  if (!battle || battle.type !== 'battle') return;
   // handle buff durations
   ['playerBuffs', 'enemyBuffs'].forEach((key) => {
     const list = battle[key];
@@ -2255,9 +2453,11 @@ function concludeBattle(victory) {
     }
     rollBattleDrops(enemy);
     if (isHeartDemon(enemy)) {
-      grantRelic(gameState, 'epiphanyCrystal');
+      if (!gameState.flags.epiphanyGranted) {
+        grantRelic(gameState, 'epiphanyCrystal');
+      }
       grantUniqueRareRelic(gameState);
-      pushBattleLog('心魔幻影的残影崩解，掉落了【顿悟结晶】与额外奖励。');
+      pushBattleLog('心魔幻影的残影崩解，掉落奖励。');
     }
     gameState.encounter = null;
     tickPersistentStatuses(gameState.player);
@@ -2424,6 +2624,8 @@ function grantRelic(state, id) {
   inventory.push({ id: relic.id, quality: relic.quality });
   pushLog(`获得藏品【${relic.name}】`);
   if (relic.id === 'epiphanyCrystal') {
+    state.flags = state.flags || {};
+    state.flags.epiphanyGranted = true;
     for (let i = 0; i < 10; i++) {
       state.player.level += 1;
       onLevelUp(state);
@@ -2462,6 +2664,30 @@ function addGoldAndExpForNonBattle(state) {
   addGold(state, reward);
   gainExperience(state, reward);
   pushLog('商人之友提供额外奖励。');
+}
+
+function triggerDreamRelicSkill() {
+  if (!gameState.encounter || gameState.encounter.type !== 'battle') return;
+  const player = gameState.player;
+  const hero = HEROES.find((h) => h.id === player.heroId);
+  if (!hero) return;
+  const skill = randomChoice(hero.skills);
+  const manaCost = Math.max(0, Math.ceil((skill.cost || 0) / 2));
+  if (player.currentMana < manaCost) return;
+  player.currentMana -= manaCost;
+  pushBattleLog(`梦奇物溢出能量，自动施放【${skill.name}】。`);
+  const extra = {
+    skillResistShred: player.stats.skillResistShred || 0
+  };
+  executeSkillEffect(skill, false, extra);
+  if (!gameState.encounter || gameState.encounter.type !== 'battle') {
+    return;
+  }
+  const doubleChance = player.stats.skillDoubleChance || 0;
+  if (doubleChance > 0 && Math.random() < doubleChance) {
+    pushBattleLog('创世之杖共鸣，技能再次发动！');
+    executeSkillEffect(skill, true, extra);
+  }
 }
 
 function spendExperience(state, amount) {
