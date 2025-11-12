@@ -25,7 +25,13 @@ function pwLinear(level, base, perArray) {
     total += take * (perArray[i] || 0);
     L -= take;
   }
-  return Math.floor(total);
+  let result = Math.floor(total);
+  const beyondSixthLayer = Math.max(0, Math.floor(level) - 150);
+  if (beyondSixthLayer > 0) {
+    const exponentialBoost = Math.pow(1.01, beyondSixthLayer);
+    result = Math.floor(result * exponentialBoost);
+  }
+  return result;
 }
 
 function difficultyMultiplier() {
@@ -578,9 +584,9 @@ const NORMAL_ENEMIES = [
     description: '每回合获得10%生命护盾',
     baseRewards: { exp: { base: 30, per: 6 }, gold: { base: 15, per: 4 } },
     stats: (L) => ({
-      hp: pwLinear(L, 30, [12, 16, 22, 26, 18, 14]),
-      attack: pwLinear(L, 10, [1.5, 2.5, 3.2, 3.8, 3.0, 2.5]),
-      defense: pwLinear(L, 10, [0.8, 1.0, 1.2, 1.4, 1.2, 1.0]),
+      hp: pwLinear(L, 30, [12, 16, 32, 40, 48, 64]),
+      attack: pwLinear(L, 10, [1.5, 2.5, 3.6, 5.8, 8.0, 11.5]),
+      defense: pwLinear(L, 10, [0.8, 1.0, 4.2, 6.4, 9.2, 11.0]),
       resist: pwLinear(L, 3, [0.3, 0.4, 0.5, 0.6, 0.5, 0.4]),
       type: 'physical'
     }),
@@ -596,9 +602,9 @@ const NORMAL_ENEMIES = [
     description: '普通攻击吸血30%',
     baseRewards: { exp: { base: 28, per: 9 }, gold: { base: 22, per: 6 } },
     stats: (L) => ({
-      hp: pwLinear(L, 30, [10, 14, 18, 22, 16, 14]),
-      attack: pwLinear(L, 14, [1.8, 2.2, 2.6, 3.0, 2.5, 2.0]),
-      defense: pwLinear(L, 2, [0.2, 0.4, 0.5, 0.6, 0.5, 0.4]),
+      hp: pwLinear(L, 30, [10, 14, 22, 30, 36, 44]),
+      attack: pwLinear(L, 14, [1.8, 2.4, 3.0, 4.2, 5.2, 6.0]),
+      defense: pwLinear(L, 2, [0.4, 0.6, 0.9, 1.2, 1.5, 1.8]),
       resist: pwLinear(L, 8, [0.8, 1.0, 1.2, 1.4, 1.2, 1.0]),
       type: 'magic'
     }),
@@ -610,9 +616,9 @@ const NORMAL_ENEMIES = [
     description: '施放120%攻击力的法术。',
     baseRewards: { exp: { base: 35, per: 7 }, gold: { base: 20, per: 6 } },
     stats: (L) => ({
-      hp: pwLinear(L, 15, [6, 10, 14, 18, 14, 12]),
-      attack: pwLinear(L, 4, [1.5, 1.8, 2.2, 2.6, 2.4, 2.0]),
-      defense: pwLinear(L, 1, [0.2, 0.3, 0.4, 0.5, 0.4, 0.3]),
+      hp: pwLinear(L, 15, [6, 10, 14, 28, 39, 44]),
+      attack: pwLinear(L, 4, [1.5, 1.8, 2.8, 4.6, 6.4, 9.0]),
+      defense: pwLinear(L, 1, [0.4, 0.6, 0.9, 1.2, 1.5, 1.8]),
       resist: pwLinear(L, 8, [1.0, 1.2, 1.4, 1.6, 1.4, 1.2]),
       type: 'magic',
       modifier: 1.2
@@ -624,10 +630,10 @@ const NORMAL_ENEMIES = [
     description: '血量低于50%攻击提升。',
     baseRewards: { exp: { base: 45, per: 11 }, gold: { base: 28, per: 8 } },
     stats: (L) => ({
-      hp: pwLinear(L, 40, [10, 14, 22, 28, 20, 18]),
+      hp: pwLinear(L, 40, [10, 18, 36, 64, 81, 99]),
       attack: pwLinear(L, 10, [2.0, 3.0, 4.0, 5.0, 4.0, 3.0]),
-      defense: pwLinear(L, 5, [0.5, 0.8, 1.2, 1.6, 1.4, 1.2]),
-      resist: pwLinear(L, 1, [0.1, 0.2, 0.3, 0.4, 0.3, 0.3]),
+      defense: pwLinear(L, 5, [0.4, 0.6, 0.9, 1.5, 1.8, 2.8]),
+      resist: pwLinear(L, 1, [0.1, 0.2, 0.3, 1.4, 0.3, 0.3]),
       type: 'physical'
     }),
     frenzyThreshold: 0.5,
@@ -642,10 +648,10 @@ const ELITE_ENEMIES = [
     description: '首回合惊喜一击，死亡掉落翻倍金币。',
     baseRewards: { exp: { base: 90, per: 18 }, gold: { base: 90, per: 18 } },
     stats: (L) => ({
-      hp: pwLinear(L, 34, [10, 15, 24, 30, 24, 20]),
-      attack: pwLinear(L, 16, [1.8, 2.4, 3.2, 3.8, 3.4, 3.0]),
-      defense: pwLinear(L, 8, [0.4, 0.6, 0.8, 1.1, 1.0, 0.8]),
-      resist: pwLinear(L, 28, [0.6, 0.8, 1.0, 1.2, 1.0, 0.8]),
+      hp: pwLinear(L, 30, [10, 15, 44, 50, 64, 90]),
+      attack: pwLinear(L, 16, [1.8, 2.4, 4.0, 8.0, 12.0, 16.0]),
+      defense: pwLinear(L, 8, [0.4, 0.6, 0.8, 1.5, 2.0, 2.8]),
+      resist: pwLinear(L, 28, [0.6, 0.8, 1.4, 1.6, 1.8, 1.8]),
       type: 'physical'
     }),
     openingStrike: true,
@@ -657,10 +663,10 @@ const ELITE_ENEMIES = [
     description: '双段奥术飞弹并有法力护盾。',
     baseRewards: { exp: { base: 110, per: 20 }, gold: { base: 70, per: 14 } },
     stats: (L) => ({
-      hp: pwLinear(L, 21, [8, 12, 22, 28, 24, 20]),
-      attack: pwLinear(L, 12, [1.6, 2.2, 3.0, 3.6, 3.2, 2.8]),
-      defense: pwLinear(L, 12, [0.4, 0.6, 0.9, 1.2, 1.0, 0.8]),
-      resist: pwLinear(L, 20, [0.8, 1.0, 1.2, 1.4, 1.2, 1.0]),
+      hp: pwLinear(L, 15, [8, 12, 40, 44, 48, 62]),
+      attack: pwLinear(L, 12, [1.6, 2.2, 4.1, 14.6, 15.2, 17.8]),
+      defense: pwLinear(L, 12, [0.4, 0.6, 0.9, 1.2, 1.5, 1.8]),
+      resist: pwLinear(L, 20, [0.8, 1.0, 1.2, 1.4, 1.6, 2.0]),
       type: 'magic',
       hits: 2,
       modifier: 0.8
@@ -1233,7 +1239,8 @@ function selectHero(heroId) {
     pendingBuffs: [],
     blackTulipStacks: 0,
     usedManualSkillThisTurn: false,
-    usedManualSkillLastTurn: false
+    usedManualSkillLastTurn: false,
+    flags: {}
   };
   gameState.player = player;
   updatePlayerStats(gameState);
@@ -1241,7 +1248,23 @@ function selectHero(heroId) {
   player.currentMana = player.stats.maxMana;
   heroModal.classList.remove('visible');
   pushLog(`你以${hero.name}身份踏上旅程。`);
+  grantStarterRelicsForDifficulty(gameState);
   updateUI();
+}
+
+function grantStarterRelicsForDifficulty(state) {
+  if (!state?.player) return;
+  state.player.flags = state.player.flags || {};
+  if (state.player.flags.starterRelicsGranted) return;
+  const starterQualities = [];
+  if (difficultyLevel >= 12) {
+    starterQualities.push('legendary', 'epic');
+  } else if (difficultyLevel >= 9) {
+    starterQualities.push('legendary');
+  }
+  if (!starterQualities.length) return;
+  starterQualities.forEach((quality) => rollRelicDrop(state, quality));
+  state.player.flags.starterRelicsGranted = true;
 }
 
 /* Player stat calculations */
