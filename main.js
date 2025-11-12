@@ -30,7 +30,7 @@ function pwLinear(level, base, perArray) {
   let result = Math.floor(total);
   const exponent = Math.max(0, Math.floor(level));
   if (exponent > 0) {
-    const exponentialBoost = Math.pow(1.04, exponent);
+    const exponentialBoost = Math.pow(1.02, exponent);
     result = Math.floor(result * exponentialBoost);
   }
   return result;
@@ -57,17 +57,26 @@ function scaleStatsByDifficulty(stats) {
   };
 }
 
-function applyHighDifficultyStatGrowth(stats, level) {
+function applyHighDifficultyStatGrowth(stats, level, baselineStats) {
   if (!stats) return stats;
   if (difficultyLevel < 9 || level <= 30) return stats;
   const hpMultiplier = difficultyLevel >= 12 ? 3 : 1.5;
-  if (typeof stats.hp === 'number') {
-    stats.hp = Math.max(1, Math.floor(stats.hp * hpMultiplier));
-  }
-  if (typeof stats.attack === 'number') {
-    const attackMultiplier = difficultyLevel >= 12 ? 1.15 : 1;
-    stats.attack = Math.max(1, Math.floor(stats.attack * attackMultiplier));
-  }
+  const attackMultiplier = difficultyLevel >= 12 ? 1.35 : 1;
+  const amplifyDelta = (key, multiplier, min) => {
+    if (typeof stats[key] !== 'number' || multiplier === 1) return;
+    const baseline =
+      baselineStats && typeof baselineStats[key] === 'number' ? baselineStats[key] : null;
+    if (baseline !== null) {
+      const delta = stats[key] - baseline;
+      if (delta > 0) {
+        stats[key] = Math.max(min, Math.floor(baseline + delta * multiplier));
+        return;
+      }
+    }
+    stats[key] = Math.max(min, Math.floor(stats[key] * multiplier));
+  };
+  amplifyDelta('hp', hpMultiplier, 1);
+  amplifyDelta('attack', attackMultiplier, 1);
   return stats;
 }
 
@@ -1271,14 +1280,15 @@ function grantStarterRelicsForDifficulty(state) {
   if (!state?.player) return;
   state.player.flags = state.player.flags || {};
   if (state.player.flags.starterRelicsGranted) return;
-  const starterQualities = [];
-  if (difficultyLevel >= 12) {
-    starterQualities.push('legendary', 'epic');
-  } else if (difficultyLevel >= 9) {
-    starterQualities.push('legendary');
+  const starterRelics = [];
+  if (difficultyLevel >= 9) {
+    starterRelics.push('immortalWard');
   }
-  if (!starterQualities.length) return;
-  starterQualities.forEach((quality) => rollRelicDrop(state, quality));
+  if (difficultyLevel >= 12) {
+    starterRelics.push('omniRing');
+  }
+  if (!starterRelics.length) return;
+  starterRelics.forEach((id) => grantRelic(state, id));
   state.player.flags.starterRelicsGranted = true;
 }
 
@@ -1749,6 +1759,8 @@ function triggerBattleEncounter() {
 
 function openShop() {
   const items = [];
+  const player = gameState.player;
+  if (!player) return;
   POTIONS.forEach((p) => {
     items.push({
       id: `potion:${p.id}`,
@@ -1757,32 +1769,27 @@ function openShop() {
       price: computeShopPrice(gameState, p.price)
     });
   });
-  if (Math.random() < 0.3) {
-    const rarityRoll = Math.random();
-    let rarity =
-      rarityRoll < 0.7
-        ? 'common'
-        : rarityRoll < 0.95
-        ? 'rare'
-        : rarityRoll < 0.995
-        ? 'epic'
-        : 'legendary';
-    rarity = clampQualityToUnlocked(rarity);
-    if (rarity) {
-      const pool = RELICS.filter((r) => r.quality === rarity && isQualityUnlocked(r.quality));
-      if (pool.length) {
-        const relic = randomChoice(pool);
-        items.push({
-          id: `relic:${relic.id}`,
-          name: relic.name,
-          description: relic.description,
-          price: computeShopPrice(
-            gameState,
-            rarity === 'common' ? 400 : rarity === 'rare' ? 700 : rarity === 'epic' ? 1500 : 4000
-          )
-        });
-      }
+  const offeredRelicIds = new Set();
+  const commonRelic = pickShopRelicByQuality(player, 'common', offeredRelicIds, {
+    avoidOwned: true
+  });
+  if (commonRelic) {
+    offeredRelicIds.add(commonRelic.id);
+    items.push(createShopRelicItem(gameState, commonRelic));
+  }
+  const qualityPreferences = getShopSpecialQualityOrder();
+  let specialRelic = null;
+  for (const quality of qualityPreferences) {
+    if (!isQualityUnlocked(quality)) continue;
+    const candidate = pickShopRelicByQuality(player, quality, offeredRelicIds);
+    if (candidate) {
+      specialRelic = candidate;
+      break;
     }
+  }
+  if (specialRelic) {
+    offeredRelicIds.add(specialRelic.id);
+    items.push(createShopRelicItem(gameState, specialRelic));
   }
   addGoldAndExpForNonBattle(gameState);
   gameState.encounter = {
@@ -1790,6 +1797,61 @@ function openShop() {
     title: '流浪商人',
     items
   };
+}
+
+function pickShopRelicByQuality(player, quality, excludeIds = new Set(), options = {}) {
+  if (!player?.inventory?.relics) return null;
+  const exclusions = new Set(excludeIds);
+  const pool = RELICS.filter(
+    (relic) =>
+      relic.quality === quality &&
+      !exclusions.has(relic.id) &&
+      isQualityUnlocked(relic.quality) &&
+      canOfferRelicToPlayer(player, relic, options)
+  );
+  if (!pool.length) return null;
+  return randomChoice(pool);
+}
+
+function canOfferRelicToPlayer(player, relic, options = {}) {
+  if (!player?.inventory?.relics) return false;
+  const inventory = player.inventory.relics;
+  const count = inventory.filter((entry) => entry.id === relic.id).length;
+  if (options.avoidOwned && count > 0) return false;
+  if (relic.quality === 'common') {
+    return count < COMMON_DUPLICATE_LIMIT;
+  }
+  if (relic.quality === 'rare') {
+    const limit = difficultyLevel >= 12 ? 3 : 1;
+    return count < limit;
+  }
+  return count === 0;
+}
+
+function getShopSpecialQualityOrder() {
+  const roll = Math.random();
+  const first = roll < 0.7 ? 'rare' : roll < 0.9 ? 'epic' : 'legendary';
+  const order = [first];
+  ['rare', 'epic', 'legendary'].forEach((quality) => {
+    if (!order.includes(quality)) order.push(quality);
+  });
+  return order;
+}
+
+function createShopRelicItem(state, relic) {
+  return {
+    id: `relic:${relic.id}`,
+    name: relic.name,
+    description: relic.description,
+    price: computeShopPrice(state, getRelicShopBasePrice(relic.quality))
+  };
+}
+
+function getRelicShopBasePrice(quality) {
+  if (quality === 'common') return 400;
+  if (quality === 'rare') return 700;
+  if (quality === 'epic') return 1500;
+  return 4000;
 }
 
 function openChest() {
@@ -1916,15 +1978,26 @@ function spawnEnemyFrom(template) {
   let info;
   if (template === HEART_DEMON) {
     const stats = template.stats(player);
+    let baselineStats = null;
+    if (level > 30) {
+      const snapshot = JSON.parse(JSON.stringify(player));
+      snapshot.level = 30;
+      const tempState = { player: snapshot };
+      updatePlayerStats(tempState);
+      const scaledBaseline = template.stats(snapshot);
+      baselineStats = scaleStatsByDifficulty(scaledBaseline);
+    }
     info = scaleStatsByDifficulty(stats);
-    info = applyHighDifficultyStatGrowth(info, player.level);
+    info = applyHighDifficultyStatGrowth(info, player.level, baselineStats);
     info.type = stats.type;
     info.hits = stats.hits;
     info.modifier = stats.modifier;
   } else {
     const stats = template.stats(level);
+    const baselineStats =
+      level > 30 ? scaleStatsByDifficulty(template.stats(30)) : null;
     info = scaleStatsByDifficulty(stats);
-    info = applyHighDifficultyStatGrowth(info, level);
+    info = applyHighDifficultyStatGrowth(info, level, baselineStats);
     info.type = stats.type;
     info.hits = stats.hits;
     info.modifier = stats.modifier;
@@ -2698,6 +2771,7 @@ function applyTurnStartEffects(actor) {
   }
   battle = gameState.encounter;
   if (!battle || battle.type !== 'battle') return;
+  if (actor !== 'player') return;
   // handle buff durations
   ['playerBuffs', 'enemyBuffs'].forEach((key) => {
     const list = battle[key];
