@@ -21,8 +21,14 @@
           <p class="lead">
             依照 design.md 设计稿实现的浏览器游戏。请选择喜欢的职业，管理药水、藏品与金币，在多种事件与战斗中求得生存。
           </p>
+          <div class="difficulty-banner">
+            当前难度：<span id="difficulty-label">n9</span>
+          </div>
         </div>
-        <button id="reset-btn" class="ghost-btn">重新开始</button>
+        <div class="hero-controls">
+          <button id="change-difficulty" class="ghost-btn">调整难度</button>
+          <button id="reset-btn" class="ghost-btn">重新开始</button>
+        </div>
       </header>
 
       <section class="info-grid">
@@ -95,11 +101,18 @@
       </section>
     </main>
 
-    <div class="modal visible" id="hero-modal">
+    <div class="modal" id="hero-modal">
       <div class="modal__content">
         <h2>选择职业</h2>
         <p>不同职业拥有独特的普通攻击与技能，请根据喜好选择。</p>
         <div class="hero-grid" id="hero-options"></div>
+      </div>
+    </div>
+    <div class="modal visible" id="difficulty-modal">
+      <div class="modal__content">
+        <h2>选择难度</h2>
+        <p>n0 最轻松，n15 最具挑战。难度会影响敌人倍率与可获得的藏品品质。</p>
+        <div class="difficulty-grid" id="difficulty-options"></div>
       </div>
     </div>
 
@@ -125,7 +138,7 @@
       </section>
     </aside>
 
-    <div class="app-version">v1.4.1</div>
+    <div class="app-version">v1.5.0</div>
 
     <template id="battle-template">
       <div class="battle-panel">

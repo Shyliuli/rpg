@@ -10,6 +10,62 @@ const expScale = (base, coeff, growth, level) => base + coeff * Math.pow(growth,
 const hybridScale = (base, coeff, linearFactor, growth, level) =>
   base + coeff * (linearFactor * level + Math.pow(growth, level));
 
+let difficultyLevel = 9; // default n9
+const TIER_EDGES = [10, 30, 60, 100, 150];
+const QUALITY_ORDER = ['common', 'rare', 'epic', 'legendary'];
+const DIFFICULTY_LEVELS = Array.from({ length: 16 }, (_, i) => i);
+function pwLinear(level, base, perArray) {
+  // perArray length should be 6
+  const spans = [10, 20, 30, 40, 50, Infinity];
+  let L = Math.max(0, Math.floor(level));
+  let total = base;
+  for (let i = 0; i < 6 && L > 0; i++) {
+    const take = Math.min(L, spans[i] === Infinity ? L : spans[i]);
+    total += take * (perArray[i] || 0);
+    L -= take;
+  }
+  return Math.floor(total);
+}
+
+function difficultyMultiplier() {
+  const d = difficultyLevel;
+  if (d <= 9) {
+    return 0.45 + (d * (0.55 / 9));
+  }
+  if (d <= 12) {
+    return 1 + 0.15 * (d - 9);
+  }
+  return 1.45 + 0.3 * (d - 12);
+}
+
+function scaleStatsByDifficulty(stats) {
+  const mult = difficultyMultiplier();
+  return {
+    hp: Math.max(1, Math.floor(stats.hp * mult)),
+    attack: Math.max(1, Math.floor(stats.attack * mult)),
+    defense: Math.max(0, Math.floor(stats.defense * mult)),
+    resist: Math.max(0, Math.floor(stats.resist * mult))
+  };
+}
+
+function isQualityUnlocked(quality) {
+  if (quality === 'legendary') return difficultyLevel >= 6;
+  if (quality === 'epic') return difficultyLevel >= 3;
+  return true;
+}
+
+function clampQualityToUnlocked(quality) {
+  const targetIndex = QUALITY_ORDER.indexOf(quality);
+  for (let i = targetIndex; i >= 0; i--) {
+    if (isQualityUnlocked(QUALITY_ORDER[i])) return QUALITY_ORDER[i];
+  }
+  return QUALITY_ORDER.find(isQualityUnlocked) || null;
+}
+
+function isEventUnlocked(event) {
+  return !event.minDifficulty || difficultyLevel >= event.minDifficulty;
+}
+
 /* Hero definitions */
 const HEROES = [
   {
@@ -503,10 +559,10 @@ const NORMAL_ENEMIES = [
     description: '每回合获得10%生命护盾',
     baseRewards: { exp: { base: 30, per: 6 }, gold: { base: 15, per: 4 } },
     stats: (L) => ({
-      hp: Math.floor(30 + 12 * L + 18 * Math.pow(1.06, L)),
-      attack: Math.floor(10 + 3.5 * L + 4 * Math.pow(1.07, L)),
-      defense: Math.floor(10 + 2.2 * Math.pow(1.04, L)),
-      resist: Math.floor(3 + 1.2 * L),
+      hp: pwLinear(L, 30, [12, 16, 22, 26, 18, 14]),
+      attack: pwLinear(L, 10, [1.5, 2.5, 3.2, 3.8, 3.0, 2.5]),
+      defense: pwLinear(L, 10, [0.8, 1.0, 1.2, 1.4, 1.2, 1.0]),
+      resist: pwLinear(L, 3, [0.3, 0.4, 0.5, 0.6, 0.5, 0.4]),
       type: 'physical'
     }),
     onTurnStart: (enemy) => {
@@ -521,10 +577,10 @@ const NORMAL_ENEMIES = [
     description: '普通攻击吸血30%',
     baseRewards: { exp: { base: 28, per: 9 }, gold: { base: 22, per: 6 } },
     stats: (L) => ({
-      hp: Math.floor(30 + 10 * L + 16 * Math.pow(1.07, L)),
-      attack: Math.floor(14 + 3.2 * L + 5 * Math.pow(1.08, L)),
-      defense: Math.floor(2 + 2 * Math.pow(1.04, L)),
-      resist: Math.floor(8 + 1.6 * L),
+      hp: pwLinear(L, 30, [10, 14, 18, 22, 16, 14]),
+      attack: pwLinear(L, 14, [1.8, 2.2, 2.6, 3.0, 2.5, 2.0]),
+      defense: pwLinear(L, 2, [0.2, 0.4, 0.5, 0.6, 0.5, 0.4]),
+      resist: pwLinear(L, 8, [0.8, 1.0, 1.2, 1.4, 1.2, 1.0]),
       type: 'magic'
     }),
     lifeSteal: 0.3
@@ -535,10 +591,10 @@ const NORMAL_ENEMIES = [
     description: '施放120%攻击力的法术。',
     baseRewards: { exp: { base: 35, per: 7 }, gold: { base: 20, per: 6 } },
     stats: (L) => ({
-      hp: Math.floor(15 + 6 * L + 15 * Math.pow(1.07, L)),
-      attack: Math.floor(4 + 2.5 * L + 5 * Math.pow(1.08, L)),
-      defense: Math.floor(1 + 1.8 * Math.pow(1.04, L)),
-      resist: Math.floor(8 + 3 * L),
+      hp: pwLinear(L, 15, [6, 10, 14, 18, 14, 12]),
+      attack: pwLinear(L, 4, [1.5, 1.8, 2.2, 2.6, 2.4, 2.0]),
+      defense: pwLinear(L, 1, [0.2, 0.3, 0.4, 0.5, 0.4, 0.3]),
+      resist: pwLinear(L, 8, [1.0, 1.2, 1.4, 1.6, 1.4, 1.2]),
       type: 'magic',
       modifier: 1.2
     })
@@ -549,10 +605,10 @@ const NORMAL_ENEMIES = [
     description: '血量低于50%攻击提升。',
     baseRewards: { exp: { base: 45, per: 11 }, gold: { base: 28, per: 8 } },
     stats: (L) => ({
-      hp: Math.floor(40 + 10 * L + 30 * Math.pow(1.07, L)),
-      attack: Math.floor(10 + 4.2 * L + 7 * Math.pow(1.07, L)),
-      defense: Math.floor(5 + 2.4 * Math.pow(1.04, L)),
-      resist: Math.floor(1 + 1.1 * L),
+      hp: pwLinear(L, 40, [10, 14, 22, 28, 20, 18]),
+      attack: pwLinear(L, 10, [2.0, 3.0, 4.0, 5.0, 4.0, 3.0]),
+      defense: pwLinear(L, 5, [0.5, 0.8, 1.2, 1.6, 1.4, 1.2]),
+      resist: pwLinear(L, 1, [0.1, 0.2, 0.3, 0.4, 0.3, 0.3]),
       type: 'physical'
     }),
     frenzyThreshold: 0.5,
@@ -567,10 +623,10 @@ const ELITE_ENEMIES = [
     description: '首回合惊喜一击，死亡掉落翻倍金币。',
     baseRewards: { exp: { base: 90, per: 18 }, gold: { base: 90, per: 18 } },
     stats: (L) => ({
-      hp: Math.floor(40 + 32 * L + 40 * Math.pow(1.08, L)),
-      attack: Math.floor(16 + 3.5 * L + 8 * Math.pow(1.1, L)),
-      defense: Math.floor(24 + 2.4 * Math.pow(1.05, L)),
-      resist: Math.floor(28 + 2.5 * L),
+      hp: pwLinear(L, 40, [12, 18, 24, 30, 24, 20]),
+      attack: pwLinear(L, 16, [1.8, 2.4, 3.2, 3.8, 3.4, 3.0]),
+      defense: pwLinear(L, 8, [0.4, 0.6, 0.8, 1.1, 1.0, 0.8]),
+      resist: pwLinear(L, 28, [0.6, 0.8, 1.0, 1.2, 1.0, 0.8]),
       type: 'physical'
     }),
     openingStrike: true,
@@ -582,10 +638,10 @@ const ELITE_ENEMIES = [
     description: '双段奥术飞弹并有法力护盾。',
     baseRewards: { exp: { base: 110, per: 20 }, gold: { base: 70, per: 14 } },
     stats: (L) => ({
-      hp: Math.floor(25 + 28 * L + 32 * Math.pow(1.08, L)),
-      attack: Math.floor(12 + 3.5 * L + 9 * Math.pow(1.1, L)),
-      defense: Math.floor(30 + 1.8 * Math.pow(1.04, L)),
-      resist: Math.floor(45 + 3.2 * L),
+      hp: pwLinear(L, 25, [10, 16, 22, 28, 24, 20]),
+      attack: pwLinear(L, 12, [1.6, 2.2, 3.0, 3.6, 3.2, 2.8]),
+      defense: pwLinear(L, 12, [0.4, 0.6, 0.9, 1.2, 1.0, 0.8]),
+      resist: pwLinear(L, 20, [0.8, 1.0, 1.2, 1.4, 1.2, 1.0]),
       type: 'magic',
       hits: 2,
       modifier: 0.8
@@ -632,6 +688,7 @@ const EVENT_DEFS = [
     name: '命运的岔路口',
     description: '左路喧嚣，右路宁静，只出现一次。',
     once: true,
+    minDifficulty: 9,
     options: [
       {
         id: 'left',
@@ -923,6 +980,8 @@ let gameState = defaultState();
 /* UI references */
 const heroModal = document.getElementById('hero-modal');
 const heroOptionsContainer = document.getElementById('hero-options');
+const difficultyModal = document.getElementById('difficulty-modal');
+const difficultyOptionsContainer = document.getElementById('difficulty-options');
 const playerSummary = document.getElementById('player-summary');
 const hpBar = document.getElementById('hp-bar');
 const hpText = document.getElementById('hp-text');
@@ -943,9 +1002,15 @@ const bagRelics = document.getElementById('bag-relics');
 const overlayModal = document.getElementById('overlay-modal');
 const overlayBody = document.getElementById('overlay-body');
 const statusFlags = document.getElementById('status-flags');
+const difficultyLabel = document.getElementById('difficulty-label');
+const changeDifficultyBtn = document.getElementById('change-difficulty');
 
 /* Initialization */
 function init() {
+  renderDifficultyOptions();
+  updateDifficultyLabel();
+  if (difficultyModal) difficultyModal.classList.add('visible');
+  if (heroModal) heroModal.classList.remove('visible');
   renderHeroOptions();
   attachHandlers();
   updateUI();
@@ -954,7 +1019,8 @@ function init() {
 function attachHandlers() {
   document.getElementById('reset-btn').addEventListener('click', () => {
     gameState = defaultState();
-    heroModal.classList.add('visible');
+    heroModal.classList.remove('visible');
+    difficultyModal.classList.add('visible');
     closeBag();
     closeOverlay();
     updateUI();
@@ -968,6 +1034,12 @@ function attachHandlers() {
 
   document.getElementById('bag-close').addEventListener('click', closeBag);
   document.getElementById('overlay-close').addEventListener('click', closeOverlay);
+  if (changeDifficultyBtn) {
+    changeDifficultyBtn.addEventListener('click', () => {
+      difficultyModal.classList.add('visible');
+      heroModal.classList.remove('visible');
+    });
+  }
 
   document.getElementById('roam-btn').addEventListener('click', () => {
     if (!ensurePlayer()) return;
@@ -995,6 +1067,35 @@ function ensurePlayer() {
     return false;
   }
   return true;
+}
+
+function renderDifficultyOptions() {
+  if (!difficultyOptionsContainer) return;
+  difficultyOptionsContainer.innerHTML = '';
+  DIFFICULTY_LEVELS.forEach((level) => {
+    const btn = document.createElement('button');
+    btn.textContent = `n${level}`;
+    if (level === difficultyLevel) btn.classList.add('active');
+    btn.addEventListener('click', () => selectDifficulty(level));
+    difficultyOptionsContainer.appendChild(btn);
+  });
+}
+
+function selectDifficulty(level) {
+  difficultyLevel = level;
+  updateDifficultyLabel();
+  renderDifficultyOptions();
+  pushLog(`难度调整为 n${level}`);
+  if (difficultyModal) difficultyModal.classList.remove('visible');
+  if (!gameState.player && heroModal) {
+    heroModal.classList.add('visible');
+  }
+}
+
+function updateDifficultyLabel() {
+  if (difficultyLabel) {
+    difficultyLabel.textContent = `n${difficultyLevel}`;
+  }
 }
 
 function renderHeroOptions() {
@@ -1522,7 +1623,7 @@ function openShop() {
   });
   if (Math.random() < 0.3) {
     const rarityRoll = Math.random();
-    const rarity =
+    let rarity =
       rarityRoll < 0.7
         ? 'common'
         : rarityRoll < 0.95
@@ -1530,17 +1631,22 @@ function openShop() {
         : rarityRoll < 0.995
         ? 'epic'
         : 'legendary';
-    const pool = RELICS.filter((r) => r.quality === rarity);
-    const relic = randomChoice(pool);
-    items.push({
-      id: `relic:${relic.id}`,
-      name: relic.name,
-      description: relic.description,
-      price: computeShopPrice(
-        gameState,
-        rarity === 'common' ? 400 : rarity === 'rare' ? 700 : rarity === 'epic' ? 1500 : 4000
-      )
-    });
+    rarity = clampQualityToUnlocked(rarity);
+    if (rarity) {
+      const pool = RELICS.filter((r) => r.quality === rarity && isQualityUnlocked(r.quality));
+      if (pool.length) {
+        const relic = randomChoice(pool);
+        items.push({
+          id: `relic:${relic.id}`,
+          name: relic.name,
+          description: relic.description,
+          price: computeShopPrice(
+            gameState,
+            rarity === 'common' ? 400 : rarity === 'rare' ? 700 : rarity === 'epic' ? 1500 : 4000
+          )
+        });
+      }
+    }
   }
   addGoldAndExpForNonBattle(gameState);
   gameState.encounter = {
@@ -1560,16 +1666,25 @@ function openChest() {
 }
 
 function triggerEvent() {
-  let event;
+  let event = null;
   if (!gameState.flags.firstEventShown) {
-    event = EVENT_DEFS.find((e) => e.id === 'forkInRoad');
+    const starter = EVENT_DEFS.find(
+      (e) => e.id === 'forkInRoad' && (!e.once || !e.triggered) && isEventUnlocked(e)
+    );
+    if (starter) {
+      event = starter;
+      starter.triggered = true;
+    }
     gameState.flags.firstEventShown = true;
-  } else {
-    const pool = EVENT_DEFS.filter((e) => !e.once || (e.once && !e.triggered));
-    event = randomChoice(pool);
   }
-  if (!event) return;
-  event.triggered = true;
+  if (!event) {
+    const pool = EVENT_DEFS.filter((e) => (!e.once || !e.triggered) && isEventUnlocked(e));
+    if (!pool.length) return;
+    event = randomChoice(pool);
+    if (event.once) {
+      event.triggered = true;
+    }
+  }
   addGoldAndExpForNonBattle(gameState);
   gameState.encounter = {
     type: 'event',
@@ -1665,10 +1780,16 @@ function spawnEnemyFrom(template) {
   let info;
   if (template === HEART_DEMON) {
     const stats = template.stats(player);
-    info = { ...stats };
+    info = scaleStatsByDifficulty(stats);
+    info.type = stats.type;
+    info.hits = stats.hits;
+    info.modifier = stats.modifier;
   } else {
     const stats = template.stats(level);
-    info = { ...stats };
+    info = scaleStatsByDifficulty(stats);
+    info.type = stats.type;
+    info.hits = stats.hits;
+    info.modifier = stats.modifier;
   }
   const enemy = {
     id: template.id || template.name,
@@ -2217,6 +2338,11 @@ function applyDamageToPlayer(state, damage) {
   player.cooldowns = player.cooldowns || {};
   const battle = state.encounter?.type === 'battle' ? state.encounter : null;
   let remaining = damage;
+  // persistent reduction from buffs（如战士蓄力）
+  const drBuff = battle ? getBuffValue(battle.playerBuffs, 'dmgReduction') : 0;
+  if (drBuff > 0) {
+    remaining = Math.floor(remaining * (1 - drBuff));
+  }
   if (player.pendingDamageReduction) {
     remaining = Math.floor(remaining * (1 - player.pendingDamageReduction));
     player.pendingDamageReduction = 0;
@@ -2322,11 +2448,7 @@ function executeSkillEffect(skill, isEcho = false, extra = {}) {
   }
   if (skill.id === 'chargeUp') {
     addTemporaryBuff(gameState, { type: 'attack', value: 0.3, duration: 3 });
-    gameState.player.pendingDamageReduction = clamp(
-      (gameState.player.pendingDamageReduction || 0) + 0.15,
-      0,
-      0.45
-    );
+    addTemporaryBuff(gameState, { type: 'dmgReduction', value: 0.15, duration: 3 });
     healPlayer(Math.floor(gameState.player.stats.maxHp * 0.05));
     pushBattleLog('进入蓄力状态，攻防双栖，回复少量生命。');
   } else if (skill.id === 'bullRush') {
@@ -2614,8 +2736,12 @@ function addGold(state, amount) {
 function grantRelic(state, id) {
   const relic = RELICS.find((r) => r.id === id);
   if (!relic) return;
+  if (relic.id !== 'epiphanyCrystal' && !isQualityUnlocked(relic.quality)) {
+    pushLog('当前难度尚未解锁该品质藏品。');
+    return;
+  }
   const inventory = state.player.inventory.relics;
-  if (['rare', 'epic'].includes(relic.quality)) {
+  if (['rare', 'epic', 'legendary'].includes(relic.quality)) {
     if (inventory.some((item) => item.id === relic.id)) {
       pushLog(`已经拥有${relic.name}，无法重复。`);
       return;
@@ -2635,7 +2761,10 @@ function grantRelic(state, id) {
 }
 
 function rollRelicDrop(state, quality) {
-  const pool = RELICS.filter((r) => r.quality === quality);
+  const unlockedQuality = clampQualityToUnlocked(quality);
+  if (!unlockedQuality) return;
+  const pool = RELICS.filter((r) => r.quality === unlockedQuality);
+  if (!pool.length) return;
   const relic = randomChoice(pool);
   grantRelic(state, relic.id);
 }
@@ -2742,6 +2871,11 @@ function applyAttributeBoost(state, source = 'shop') {
 }
 
 function grantUniqueRareRelic(state) {
+  if (!isQualityUnlocked('rare')) {
+    addGold(state, 200);
+    pushLog('当前难度尚未解锁稀有藏品，改为奖励200金币。');
+    return;
+  }
   const rarePool = RELICS.filter((r) => r.quality === 'rare');
   const owned = new Set(state.player.inventory.relics.map((r) => r.id));
   let candidates = rarePool.filter((r) => !owned.has(r.id));
