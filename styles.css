@@ -38,6 +38,19 @@ body::before {
   z-index: 1;
   padding: 3rem clamp(1rem, 4vw, 4rem) 4rem;
 }
+ 
+.app-version {
+  position: fixed;
+  left: 1rem;
+  bottom: 1rem;
+  font-size: 0.85rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  opacity: 0.8;
+  z-index: 40;
+  pointer-events: none;
+}
 
 .hero-header {
   display: flex;

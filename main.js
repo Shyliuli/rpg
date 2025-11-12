@@ -392,6 +392,30 @@ const RELICS = [
     name: '全能戒指',
     quality: 'legendary',
     description: '所有属性+15%，战斗开始获得随机2个史诗效果'
+  },
+  {
+    id: 'steelResolve',
+    name: '钢铁心志',
+    quality: 'rare',
+    description: '致命伤害时若生命≥40%，保留1点生命并回复20%，冷却4场战斗'
+  },
+  {
+    id: 'eternalEmber',
+    name: '永燃余烬',
+    quality: 'rare',
+    description: '法术或技能命中后回复5%生命，并为下一次受到的伤害提供10%减免，可叠至30%'
+  },
+  {
+    id: 'starlitBastion',
+    name: '星辉壁垒',
+    quality: 'epic',
+    description: '入场获得60%生命护盾，护盾存在时所受暴击被转为普通伤害并额外-15%'
+  },
+  {
+    id: 'destinyAegis',
+    name: '命运庇佑',
+    quality: 'legendary',
+    description: '战斗开始获得3次绝境抵挡，每次将伤害上限限定为当前生命的30%，耗尽后恢复满血并清除一个负面状态'
   }
 ];
 
@@ -442,11 +466,15 @@ const RELIC_EFFECTS = {
   chaosRing: { enemyWeakenPercent: 0.15 },
   bloodPrince: { lifeSteal: 0.4 },
   destiny: { critChance: 0.2, destinyProc: true },
-  epiphanyCrystal: { allStatsPercent: 0.1, xpFixed: 150, bonusLevels: 10 },
+  epiphanyCrystal: { allStatsPercent: 0.1, xpFixed: 1500, bonusLevels: 10 },
   ruination: { ruinDamage: 0.08 },
   genesisStaff: { magicDamageBonus: 0.4, skillDoubleChance: 0.2 },
   greed: { goldBonus: 1.0, shopDiscount: 0.5, greedAttack: true },
-  omniRing: { allStatsPercent: 0.15, epicBorrowCount: 2 }
+  omniRing: { allStatsPercent: 0.15, epicBorrowCount: 2 },
+  steelResolve: { steelResolve: true },
+  eternalEmber: { eternalEmber: true },
+  starlitBastion: { starlitBastion: true },
+  destinyAegis: { destinyWard: 3 }
 };
 
 /* Enemy pools */
@@ -455,12 +483,12 @@ const NORMAL_ENEMIES = [
     id: 'stoneGuardian',
     name: '顽石守卫',
     description: '每回合获得10%生命护盾',
-    baseRewards: { exp: { base: 20, per: 5 }, gold: { base: 10, per: 3 } },
+    baseRewards: { exp: { base: 30, per: 6 }, gold: { base: 15, per: 4 } },
     stats: (L) => ({
-      hp: 30 + 15 * L,
-      attack: hybridScale(8, 2, 1, 1.05, L),
-      defense: expScale(10, 2, 1.01, L),
-      resist: 5 + 1 * L,
+      hp: Math.floor(90 + 20 * L + 18 * Math.pow(1.06, L)),
+      attack: Math.floor(20 + 2 * L + 4 * Math.pow(1.07, L)),
+      defense: Math.floor(20 + 2.2 * Math.pow(1.04, L)),
+      resist: Math.floor(8 + 1.2 * L),
       type: 'physical'
     }),
     onTurnStart: (enemy) => {
@@ -473,12 +501,12 @@ const NORMAL_ENEMIES = [
     id: 'shadowBat',
     name: '影蝠',
     description: '普通攻击吸血30%',
-    baseRewards: { exp: { base: 15, per: 8 }, gold: { base: 15, per: 5 } },
+    baseRewards: { exp: { base: 28, per: 9 }, gold: { base: 22, per: 6 } },
     stats: (L) => ({
-      hp: 20 + 8 * L,
-      attack: hybridScale(15, 2, 1, 1.1, L),
-      defense: expScale(5, 2, 1.01, L),
-      resist: 10 + 1 * L,
+      hp: Math.floor(80 + 18 * L + 16 * Math.pow(1.07, L)),
+      attack: Math.floor(26 + 2.8 * L + 5 * Math.pow(1.08, L)),
+      defense: Math.floor(22 + 2 * Math.pow(1.04, L)),
+      resist: Math.floor(15 + 1.4 * L),
       type: 'physical'
     }),
     lifeSteal: 0.3
@@ -487,12 +515,12 @@ const NORMAL_ENEMIES = [
     id: 'elementSprite',
     name: '元素精灵',
     description: '施放120%攻击力的法术。',
-    baseRewards: { exp: { base: 25, per: 6 }, gold: { base: 12, per: 4 } },
+    baseRewards: { exp: { base: 35, per: 7 }, gold: { base: 20, per: 6 } },
     stats: (L) => ({
-      hp: 25 + 10 * L,
-      attack: hybridScale(4, 2, 1, 1.1, L),
-      defense: expScale(5, 2, 1.01, L),
-      resist: 20 + 2.5 * L,
+      hp: Math.floor(85 + 16 * L + 15 * Math.pow(1.07, L)),
+      attack: Math.floor(19 + 2.5 * L + 5 * Math.pow(1.08, L)),
+      defense: Math.floor(20 + 1.8 * Math.pow(1.04, L)),
+      resist: Math.floor(30 + 3 * L),
       type: 'magic',
       modifier: 1.2
     })
@@ -501,12 +529,12 @@ const NORMAL_ENEMIES = [
     id: 'caveTroll',
     name: '洞穴巨魔',
     description: '血量低于50%攻击提升。',
-    baseRewards: { exp: { base: 30, per: 10 }, gold: { base: 20, per: 6 } },
+    baseRewards: { exp: { base: 45, per: 11 }, gold: { base: 28, per: 8 } },
     stats: (L) => ({
-      hp: 40 + 20 * L,
-      attack: hybridScale(10, 2.5, 1, 1.1, L),
-      defense: expScale(8, 2, 1.01, L),
-      resist: 0 + 1 * L,
+      hp: Math.floor(150 + 28 * L + 30 * Math.pow(1.07, L)),
+      attack: Math.floor(30 + 3.2 * L + 7 * Math.pow(1.07, L)),
+      defense: Math.floor(26 + 2.4 * Math.pow(1.04, L)),
+      resist: Math.floor(5 + 1.1 * L),
       type: 'physical'
     }),
     frenzyThreshold: 0.5,
@@ -519,12 +547,12 @@ const ELITE_ENEMIES = [
     id: 'chestMimic',
     name: '宝箱怪',
     description: '首回合惊喜一击，死亡掉落翻倍金币。',
-    baseRewards: { exp: { base: 50, per: 15 }, gold: { base: 50, per: 15 } },
+    baseRewards: { exp: { base: 90, per: 18 }, gold: { base: 90, per: 18 } },
     stats: (L) => ({
-      hp: 50 + 25 * L,
-      attack: hybridScale(17, 3, 1.5, 1.1, L),
-      defense: expScale(15, 2, 1.05, L),
-      resist: 15 + 2 * L,
+      hp: Math.floor(200 + 32 * L + 40 * Math.pow(1.08, L)),
+      attack: Math.floor(36 + 3.5 * L + 8 * Math.pow(1.1, L)),
+      defense: Math.floor(38 + 2.4 * Math.pow(1.05, L)),
+      resist: Math.floor(28 + 2.5 * L),
       type: 'physical'
     }),
     openingStrike: true,
@@ -534,12 +562,12 @@ const ELITE_ENEMIES = [
     id: 'fallenMage',
     name: '堕落法师',
     description: '双段奥术飞弹并有法力护盾。',
-    baseRewards: { exp: { base: 60, per: 12 }, gold: { base: 30, per: 10 } },
+    baseRewards: { exp: { base: 110, per: 20 }, gold: { base: 70, per: 14 } },
     stats: (L) => ({
-      hp: 35 + 15 * L,
-      attack: hybridScale(10, 3, 1.5, 1.1, L),
-      defense: 5 + 2 * L,
-      resist: 25 + 3 * L,
+      hp: Math.floor(160 + 28 * L + 32 * Math.pow(1.08, L)),
+      attack: Math.floor(32 + 3.5 * L + 9 * Math.pow(1.1, L)),
+      defense: Math.floor(30 + 1.8 * Math.pow(1.04, L)),
+      resist: Math.floor(45 + 3.2 * L),
       type: 'magic',
       hits: 2,
       modifier: 0.8
@@ -1012,6 +1040,8 @@ function selectHero(heroId) {
       relics: []
     },
     temporary: {},
+    cooldowns: {},
+    pendingDamageReduction: 0,
     pendingBuffs: []
   };
   gameState.player = player;
@@ -1113,6 +1143,10 @@ function updatePlayerStats(state) {
   state.player.stats.ruinDamage = relicMods.ruinDamage || 0;
   state.player.stats.epicBorrowCount = relicMods.epicBorrowCount || 0;
   state.player.stats.xpFixed = relicMods.xpFixed || null;
+  state.player.stats.steelResolve = !!relicMods.steelResolve;
+  state.player.stats.eternalEmber = !!relicMods.eternalEmber;
+  state.player.stats.starlitBastion = !!relicMods.starlitBastion;
+  state.player.stats.destinyWard = relicMods.destinyWard || 0;
 }
 
 function aggregateRelicBonuses(player) {
@@ -1450,7 +1484,7 @@ function openShop() {
       id: `potion:${p.id}`,
       name: p.name,
       description: p.description,
-      price: Math.floor(p.price * (1 - gameState.player.stats.shopDiscount || 0))
+      price: computeShopPrice(gameState, p.price)
     });
   });
   if (Math.random() < 0.3) {
@@ -1469,7 +1503,10 @@ function openShop() {
       id: `relic:${relic.id}`,
       name: relic.name,
       description: relic.description,
-      price: rarity === 'common' ? 400 : rarity === 'rare' ? 700 : rarity === 'epic' ? 1500 : 4000
+      price: computeShopPrice(
+        gameState,
+        rarity === 'common' ? 400 : rarity === 'rare' ? 700 : rarity === 'epic' ? 1500 : 4000
+      )
     });
   }
   addGoldAndExpForNonBattle(gameState);
@@ -1511,18 +1548,17 @@ function triggerEvent() {
 function handleMeditate() {
   const player = gameState.player;
   const xpCost = 200;
-  if (player.xp < xpCost) {
+  if (!spendExperience(gameState, xpCost)) {
     pushLog('经验不足，无法打坐。');
     return;
   }
-  player.xp -= xpCost;
   player.currentHp = player.stats.maxHp;
   player.currentMana = player.stats.maxMana;
   pushLog('通过打坐回复了全部生命和蓝量。');
   if (Math.random() < 0.2) {
     pushLog('心魔侵袭！精英战斗来临。');
     startBattle(gameState, spawnEnemyFrom(randomChoice(ELITE_ENEMIES)));
-  } else if (Math.random() < 0.1) {
+  } else if (Math.random() < 0.15) {
     pushLog('飞升事件出现，挑战心魔幻影。');
     startBattle(gameState, spawnHeartDemon());
   } else {
@@ -1541,8 +1577,14 @@ function purchaseItem(id, price) {
   player.gold -= price;
   if (id.startsWith('potion:')) {
     const potionId = id.split(':')[1];
-    player.inventory.potions[potionId] = (player.inventory.potions[potionId] || 0) + 1;
-    pushLog(`购买了${POTIONS.find((p) => p.id === potionId).name}`);
+    const potion = POTIONS.find((p) => p.id === potionId);
+    if (potionId === 'attributeBoost') {
+      delete player.inventory.potions[potionId];
+      applyAttributeBoost(gameState, 'shop');
+    } else {
+      player.inventory.potions[potionId] = (player.inventory.potions[potionId] || 0) + 1;
+      pushLog(`购买了${potion?.name ?? '未知药剂'}`);
+    }
   } else if (id.startsWith('relic:')) {
     const relicId = id.split(':')[1];
     grantRelic(gameState, relicId);
@@ -1624,6 +1666,8 @@ function setupBattleBonuses(state) {
   const battle = state.encounter;
   const player = state.player;
   player.shield = 0;
+  player.pendingDamageReduction = 0;
+  player.cooldowns = player.cooldowns || {};
   battle.playerBuffs = battle.playerBuffs || [];
   if (player.pendingBuffs?.length) {
     battle.playerBuffs.push(...player.pendingBuffs);
@@ -1636,6 +1680,11 @@ function setupBattleBonuses(state) {
     player.shield = value;
     battle.playerShieldDuration = player.stats.battleShield.duration;
     pushBattleLog(`获得${value}点护盾。`);
+  }
+  if (player.stats.starlitBastion) {
+    const extraShield = Math.floor(player.stats.maxHp * 0.6);
+    player.shield = (player.shield || 0) + extraShield;
+    pushBattleLog(`星辉壁垒生成${extraShield}点护盾。`);
   }
   if (player.stats.battleStartMana) {
     player.currentMana = clamp(
@@ -1678,6 +1727,10 @@ function setupBattleBonuses(state) {
       state.encounter.tempRelics.push(pick.id);
       pushBattleLog(`全能戒指赋予【${pick.name}】效果。`);
     }
+  }
+  battle.destinyWardStacks = player.stats.destinyWard || 0;
+  if (battle.destinyWardStacks > 0) {
+    pushBattleLog('命运庇佑赐下绝境抵挡。');
   }
 }
 
@@ -1756,6 +1809,7 @@ function resolveAttackPattern(pattern, isSkill, options = {}) {
   const player = gameState.player;
   const enemy = gameState.encounter.enemy;
   const stats = player.stats;
+  const attackType = pattern.type || 'physical';
   const hits = pattern.hits || [{ ratio: pattern.multiplier || 1 }];
   const attackBuff = getBuffValue(gameState.encounter.playerBuffs, 'attack');
   const critBuff = getBuffValue(gameState.encounter.playerBuffs, 'crit');
@@ -1770,7 +1824,7 @@ function resolveAttackPattern(pattern, isSkill, options = {}) {
   let manaRefund = 0;
   hits.forEach((hit) => {
     const ratio = hit.ratio;
-    const type = pattern.type || 'physical';
+    const type = attackType;
     let baseDamage = attackPower * ratio;
     if (pattern.flatBonus) {
       baseDamage += pattern.flatBonus;
@@ -1841,6 +1895,16 @@ function resolveAttackPattern(pattern, isSkill, options = {}) {
   }
   if (player.tempEmpower) {
     player.tempEmpower = 0;
+  }
+  if (totalDamage > 0 && stats.eternalEmber && (isSkill || attackType === 'magic')) {
+    const emberHeal = Math.floor(player.stats.maxHp * 0.05);
+    healPlayer(emberHeal);
+    player.pendingDamageReduction = clamp(
+      (player.pendingDamageReduction || 0) + 0.1,
+      0,
+      0.3
+    );
+    pushBattleLog('永燃余烬点燃，下一次受到的伤害将被削减。');
   }
   if (gameState.encounter.enemy.currentHp <= 0) {
     concludeBattle(true);
@@ -1996,7 +2060,16 @@ function performOpeningStrike(enemy) {
 
 function applyDamageToPlayer(state, damage) {
   const player = state.player;
+  player.cooldowns = player.cooldowns || {};
+  const battle = state.encounter?.type === 'battle' ? state.encounter : null;
   let remaining = damage;
+  if (player.pendingDamageReduction) {
+    remaining = Math.floor(remaining * (1 - player.pendingDamageReduction));
+    player.pendingDamageReduction = 0;
+  }
+  if (player.stats.starlitBastion && player.shield > 0) {
+    remaining = Math.floor(remaining * 0.85);
+  }
   if (player.shield > 0) {
     const absorbed = Math.min(player.shield, remaining);
     player.shield -= absorbed;
@@ -2006,7 +2079,38 @@ function applyDamageToPlayer(state, damage) {
   if (curse > 0 && remaining > 0) {
     remaining = Math.floor(remaining * (1 + curse));
   }
+  let destinyFinalHeal = false;
+  if (battle?.destinyWardStacks > 0 && remaining > 0) {
+    const cap = Math.max(1, Math.floor(player.currentHp * 0.3));
+    if (remaining > cap) {
+      remaining = cap;
+    }
+    battle.destinyWardStacks -= 1;
+    pushBattleLog('命运庇佑守护你，将伤害限制在安全范围内。');
+    if (battle.destinyWardStacks === 0) {
+      destinyFinalHeal = true;
+    }
+  }
+  if (
+    player.stats.steelResolve &&
+    (player.cooldowns?.steelResolve || 0) === 0 &&
+    player.currentHp > 0 &&
+    player.currentHp / player.stats.maxHp >= 0.4 &&
+    remaining >= player.currentHp
+  ) {
+    player.currentHp = Math.max(1, Math.floor(player.stats.maxHp * 0.2));
+    player.cooldowns.steelResolve = 5;
+    pushBattleLog('钢铁心志发动，你在致命伤害中挺住了。');
+    return;
+  }
   player.currentHp = Math.max(0, player.currentHp - remaining);
+  if (destinyFinalHeal) {
+    player.currentHp = player.stats.maxHp;
+    if (player.statuses?.length) {
+      player.statuses.shift();
+    }
+    pushBattleLog('命运庇佑耗尽，你被完全治愈并净化一项负面效果。');
+  }
 }
 
 function healPlayer(amount) {
@@ -2149,6 +2253,10 @@ function concludeBattle(victory) {
       healPlayer(Math.floor(enemy.maxHp * gameState.player.stats.healOnKill));
     }
     rollBattleDrops(enemy);
+    if (isHeartDemon(enemy)) {
+      grantRelic(gameState, 'epiphanyCrystal');
+      grantUniqueRareRelic(gameState);
+    }
     gameState.encounter = null;
     tickPersistentStatuses(gameState.player);
   } else {
@@ -2158,6 +2266,10 @@ function concludeBattle(victory) {
       tickPersistentStatuses(gameState.player);
     }
   }
+  gameState.player.stunned = 0;
+  gameState.player.pendingDamageReduction = 0;
+  gameState.player.tempEmpower = 0;
+  tickBattleCooldowns(gameState.player);
   updateUI();
 }
 
@@ -2224,6 +2336,9 @@ function usePotion(id) {
   const potion = POTIONS.find((p) => p.id === id);
   if (!potion) return false;
   player.inventory.potions[id] -= 1;
+  if (player.inventory.potions[id] <= 0) {
+    delete player.inventory.potions[id];
+  }
   if (potion.heal) {
     healPlayer(potion.heal);
   }
@@ -2233,9 +2348,7 @@ function usePotion(id) {
   if (potion.effect === 'luckyNextBattle') {
     player.tempLucky = { xp: true, gold: true };
   } else if (potion.effect === 'permanentChoice') {
-    player.permanent.attackFlat += 5;
-    player.permanent.hpFlat += 10;
-    updatePlayerStats(gameState);
+    applyAttributeBoost(gameState, 'potion');
   }
   pushLog(`使用了${potion.name}`);
   if (gameState.encounter?.type === 'battle') {
@@ -2300,7 +2413,7 @@ function grantRelic(state, id) {
   const relic = RELICS.find((r) => r.id === id);
   if (!relic) return;
   const inventory = state.player.inventory.relics;
-  if (['rare', 'epic', 'legendary'].includes(relic.quality)) {
+  if (['rare', 'epic'].includes(relic.quality)) {
     if (inventory.some((item) => item.id === relic.id)) {
       pushLog(`已经拥有${relic.name}，无法重复。`);
       return;
@@ -2347,6 +2460,84 @@ function addGoldAndExpForNonBattle(state) {
   addGold(state, reward);
   gainExperience(state, reward);
   pushLog('商人之友提供额外奖励。');
+}
+
+function spendExperience(state, amount) {
+  const player = state.player;
+  let remaining = amount;
+  let success = true;
+  while (remaining > 0) {
+    if (player.xp >= remaining) {
+      player.xp -= remaining;
+      remaining = 0;
+      break;
+    }
+    remaining -= player.xp;
+    player.xp = 0;
+    if (player.level === 1) {
+      success = false;
+      break;
+    }
+    player.level -= 1;
+    const req = player.stats.xpFixed || levelRequirement(player.level);
+    player.xpNeeded = req;
+    player.xp = req;
+  }
+  updatePlayerStats(state);
+  return success && remaining === 0;
+}
+
+function computeShopPrice(state, basePrice) {
+  const level = state.player.level;
+  const baseWithLevel = Math.max(1, basePrice + 2 * level);
+  const scaled = Math.floor(baseWithLevel * (1 + 0.02 * level));
+  const discountFactor = clamp(1 - (state.player.stats.shopDiscount || 0), 0.05, 1);
+  return Math.max(1, Math.floor(scaled * discountFactor));
+}
+
+function applyAttributeBoost(state, source = 'shop') {
+  const rollAttack = Math.random() < 0.5;
+  let effectText;
+  if (rollAttack) {
+    state.player.permanent.attackFlat += 5;
+    effectText = '攻击+5';
+  } else {
+    state.player.permanent.hpFlat += 10;
+    effectText = '最大生命+10';
+  }
+  updatePlayerStats(state);
+  const msg =
+    source === 'potion'
+      ? `属性增强剂在体内生效，${effectText}。`
+      : `属性增强剂立即生效，${effectText}。`;
+  pushLog(msg);
+}
+
+function grantUniqueRareRelic(state) {
+  const rarePool = RELICS.filter((r) => r.quality === 'rare');
+  const owned = new Set(state.player.inventory.relics.map((r) => r.id));
+  let candidates = rarePool.filter((r) => !owned.has(r.id));
+  if (candidates.length === 0) {
+    const compensation = 500;
+    addGold(state, compensation);
+    pushLog(`你已拥有全部稀有藏品，奖励转换为${compensation}金币。`);
+    return;
+  }
+  const relic = randomChoice(candidates);
+  grantRelic(state, relic.id);
+}
+
+function tickBattleCooldowns(player) {
+  if (!player.cooldowns) return;
+  Object.keys(player.cooldowns).forEach((key) => {
+    if (player.cooldowns[key] > 0) {
+      player.cooldowns[key] = Math.max(0, player.cooldowns[key] - 1);
+    }
+  });
+}
+
+function isHeartDemon(enemy) {
+  return enemy && (enemy.id === 'heartDemon' || enemy.name === '心魔幻影');
 }
 
 function startGame() {
