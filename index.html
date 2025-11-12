@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>命运轮回 RPG</title>
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="hero-header">
+        <div>
+          <p class="eyebrow">完整 RPG 系统演示</p>
+          <h1>命运轮回 · Rogue RPG</h1>
+          <p class="lead">
+            依照 design.md 设计稿实现的浏览器游戏。请选择喜欢的职业，管理药水、藏品与金币，在多种事件与战斗中求得生存。
+          </p>
+        </div>
+        <button id="reset-btn" class="ghost-btn">重新开始</button>
+      </header>
+
+      <section class="info-grid">
+        <article class="panel" id="player-panel">
+          <header class="panel__header">
+            <h2>角色信息</h2>
+            <div id="player-summary">尚未创建角色</div>
+          </header>
+          <div class="panel__body">
+            <div class="stat-line">
+              <span>生命值</span>
+              <div class="bar"><div id="hp-bar"></div></div>
+              <span id="hp-text">0 / 0</span>
+            </div>
+            <div class="stat-line">
+              <span>蓝量</span>
+              <div class="bar mana"><div id="mp-bar"></div></div>
+              <span id="mp-text">0 / 0</span>
+            </div>
+            <div class="stat-line">
+              <span>经验</span>
+              <div class="bar exp"><div id="xp-bar"></div></div>
+              <span id="xp-text">0 / 0</span>
+            </div>
+            <div class="stat-table" id="core-stats"></div>
+            <div class="resource-strip">
+              <div>
+                <span class="label">金币</span>
+                <strong id="gold-value">0</strong>
+              </div>
+              <div>
+                <span class="label">藏品数量</span>
+                <strong id="relic-count">0</strong>
+              </div>
+              <div>
+                <span class="label">药水</span>
+                <strong id="potion-count">0</strong>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <article class="panel" id="action-panel">
+          <header class="panel__header">
+            <h2>行动指令</h2>
+            <p>游荡探索、打坐恢复或整理背包，推进一次次遭遇。</p>
+          </header>
+          <div class="panel__body actions">
+            <button id="roam-btn" class="primary">游荡</button>
+            <button id="meditate-btn">打坐</button>
+            <button id="bag-btn">背包</button>
+          </div>
+          <div class="panel__footer" id="status-flags"></div>
+        </article>
+
+        <article class="panel span-2" id="encounter-panel">
+          <header class="panel__header">
+            <h2>当前场景</h2>
+            <p id="encounter-title">等待选择职业...</p>
+          </header>
+          <div class="panel__body" id="encounter-content"></div>
+        </article>
+
+        <article class="panel span-2" id="log-panel">
+          <header class="panel__header">
+            <h2>战报与事件</h2>
+          </header>
+          <div class="panel__body log" id="log-entries"></div>
+        </article>
+      </section>
+    </main>
+
+    <div class="modal visible" id="hero-modal">
+      <div class="modal__content">
+        <h2>选择职业</h2>
+        <p>不同职业拥有独特的普通攻击与技能，请根据喜好选择。</p>
+        <div class="hero-grid" id="hero-options"></div>
+      </div>
+    </div>
+
+    <div class="modal" id="overlay-modal">
+      <div class="modal__content">
+        <button class="close-btn" id="overlay-close">×</button>
+        <div id="overlay-body"></div>
+      </div>
+    </div>
+
+    <aside class="side-panel" id="bag-panel">
+      <header>
+        <h3>背包</h3>
+        <button class="ghost-btn" id="bag-close">收起</button>
+      </header>
+      <section>
+        <h4>药水</h4>
+        <div id="bag-potions"></div>
+      </section>
+      <section>
+        <h4>藏品</h4>
+        <div id="bag-relics"></div>
+      </section>
+    </aside>
+
+    <template id="battle-template">
+      <div class="battle-panel">
+        <section class="enemy-info">
+          <h3 id="enemy-name"></h3>
+          <div class="stat-line">
+            <span>生命</span>
+            <div class="bar"><div id="enemy-hp-bar"></div></div>
+            <span id="enemy-hp-text"></span>
+          </div>
+          <ul id="enemy-stats" class="stat-list"></ul>
+        </section>
+        <section class="battle-actions">
+          <button data-action="attack" class="primary">普通攻击</button>
+          <button data-action="skill1">技能一</button>
+          <button data-action="skill2">技能二</button>
+          <button data-action="item">使用物品</button>
+          <button data-action="run" class="ghost-btn">尝试逃跑</button>
+        </section>
+      </div>
+    </template>
+
+    <script type="module" src="main.js"></script>
+  </body>
+</html>
