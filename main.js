@@ -485,10 +485,10 @@ const NORMAL_ENEMIES = [
     description: '每回合获得10%生命护盾',
     baseRewards: { exp: { base: 30, per: 6 }, gold: { base: 15, per: 4 } },
     stats: (L) => ({
-      hp: Math.floor(90 + 20 * L + 18 * Math.pow(1.06, L)),
-      attack: Math.floor(20 + 3.5 * L + 4 * Math.pow(1.07, L)),
-      defense: Math.floor(20 + 2.2 * Math.pow(1.04, L)),
-      resist: Math.floor(8 + 1.2 * L),
+      hp: Math.floor(30 + 12 * L + 18 * Math.pow(1.06, L)),
+      attack: Math.floor(10 + 3.5 * L + 4 * Math.pow(1.07, L)),
+      defense: Math.floor(10 + 2.2 * Math.pow(1.04, L)),
+      resist: Math.floor(3 + 1.2 * L),
       type: 'physical'
     }),
     onTurnStart: (enemy) => {
@@ -503,10 +503,10 @@ const NORMAL_ENEMIES = [
     description: '普通攻击吸血30%',
     baseRewards: { exp: { base: 28, per: 9 }, gold: { base: 22, per: 6 } },
     stats: (L) => ({
-      hp: Math.floor(80 + 18 * L + 16 * Math.pow(1.07, L)),
-      attack: Math.floor(24 + 3.2 * L + 5 * Math.pow(1.08, L)),
-      defense: Math.floor(22 + 2 * Math.pow(1.04, L)),
-      resist: Math.floor(18 + 1.6 * L),
+      hp: Math.floor(30 + 10 * L + 16 * Math.pow(1.07, L)),
+      attack: Math.floor(14 + 3.2 * L + 5 * Math.pow(1.08, L)),
+      defense: Math.floor(2 + 2 * Math.pow(1.04, L)),
+      resist: Math.floor(8 + 1.6 * L),
       type: 'magic'
     }),
     lifeSteal: 0.3
@@ -517,10 +517,10 @@ const NORMAL_ENEMIES = [
     description: '施放120%攻击力的法术。',
     baseRewards: { exp: { base: 35, per: 7 }, gold: { base: 20, per: 6 } },
     stats: (L) => ({
-      hp: Math.floor(85 + 16 * L + 15 * Math.pow(1.07, L)),
-      attack: Math.floor(19 + 2.5 * L + 5 * Math.pow(1.08, L)),
-      defense: Math.floor(20 + 1.8 * Math.pow(1.04, L)),
-      resist: Math.floor(30 + 3 * L),
+      hp: Math.floor(15 + 6 * L + 15 * Math.pow(1.07, L)),
+      attack: Math.floor(4 + 2.5 * L + 5 * Math.pow(1.08, L)),
+      defense: Math.floor(1 + 1.8 * Math.pow(1.04, L)),
+      resist: Math.floor(8 + 3 * L),
       type: 'magic',
       modifier: 1.2
     })
@@ -531,10 +531,10 @@ const NORMAL_ENEMIES = [
     description: '血量低于50%攻击提升。',
     baseRewards: { exp: { base: 45, per: 11 }, gold: { base: 28, per: 8 } },
     stats: (L) => ({
-      hp: Math.floor(150 + 28 * L + 30 * Math.pow(1.07, L)),
-      attack: Math.floor(30 + 4.2 * L + 7 * Math.pow(1.07, L)),
-      defense: Math.floor(26 + 2.4 * Math.pow(1.04, L)),
-      resist: Math.floor(5 + 1.1 * L),
+      hp: Math.floor(40 + 10 * L + 30 * Math.pow(1.07, L)),
+      attack: Math.floor(10 + 4.2 * L + 7 * Math.pow(1.07, L)),
+      defense: Math.floor(5 + 2.4 * Math.pow(1.04, L)),
+      resist: Math.floor(1 + 1.1 * L),
       type: 'physical'
     }),
     frenzyThreshold: 0.5,
@@ -549,8 +549,8 @@ const ELITE_ENEMIES = [
     description: '首回合惊喜一击，死亡掉落翻倍金币。',
     baseRewards: { exp: { base: 90, per: 18 }, gold: { base: 90, per: 18 } },
     stats: (L) => ({
-      hp: Math.floor(200 + 32 * L + 40 * Math.pow(1.08, L)),
-      attack: Math.floor(36 + 3.5 * L + 8 * Math.pow(1.1, L)),
+      hp: Math.floor(40 + 32 * L + 40 * Math.pow(1.08, L)),
+      attack: Math.floor(16 + 3.5 * L + 8 * Math.pow(1.1, L)),
       defense: Math.floor(38 + 2.4 * Math.pow(1.05, L)),
       resist: Math.floor(28 + 2.5 * L),
       type: 'physical'
@@ -564,8 +564,8 @@ const ELITE_ENEMIES = [
     description: '双段奥术飞弹并有法力护盾。',
     baseRewards: { exp: { base: 110, per: 20 }, gold: { base: 70, per: 14 } },
     stats: (L) => ({
-      hp: Math.floor(160 + 28 * L + 32 * Math.pow(1.08, L)),
-      attack: Math.floor(32 + 3.5 * L + 9 * Math.pow(1.1, L)),
+      hp: Math.floor(25 + 28 * L + 32 * Math.pow(1.08, L)),
+      attack: Math.floor(12 + 3.5 * L + 9 * Math.pow(1.1, L)),
       defense: Math.floor(30 + 1.8 * Math.pow(1.04, L)),
       resist: Math.floor(45 + 3.2 * L),
       type: 'magic',
