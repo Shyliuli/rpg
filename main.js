@@ -15,6 +15,7 @@ const TIER_EDGES = [10, 30, 60, 100, 150];
 const QUALITY_ORDER = ['common', 'rare', 'epic', 'legendary'];
 const COMMON_DUPLICATE_LIMIT = 5;
 const DIFFICULTY_LEVELS = Array.from({ length: 16 }, (_, i) => i);
+const SEGMENT_MULTIPLIERS = [1, 1.2, 1.5, 2, 1.5, 1];
 function pwLinear(level, base, perArray) {
   // perArray length should be 6
   const spans = [10, 20, 30, 40, 50, Infinity];
@@ -22,13 +23,14 @@ function pwLinear(level, base, perArray) {
   let total = base;
   for (let i = 0; i < 6 && L > 0; i++) {
     const take = Math.min(L, spans[i] === Infinity ? L : spans[i]);
-    total += take * (perArray[i] || 0);
+    const perLevel = (perArray[i] || 0) * (SEGMENT_MULTIPLIERS[i] || 1);
+    total += take * perLevel;
     L -= take;
   }
   let result = Math.floor(total);
   const beyondSixthLayer = Math.max(0, Math.floor(level) - 150);
   if (beyondSixthLayer > 0) {
-    const exponentialBoost = Math.pow(1.01, beyondSixthLayer);
+    const exponentialBoost = Math.pow(1.05, beyondSixthLayer);
     result = Math.floor(result * exponentialBoost);
   }
   return result;
