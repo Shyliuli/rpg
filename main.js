@@ -13,6 +13,7 @@ const hybridScale = (base, coeff, linearFactor, growth, level) =>
 let difficultyLevel = 9; // default n9
 const TIER_EDGES = [10, 30, 60, 100, 150];
 const QUALITY_ORDER = ['common', 'rare', 'epic', 'legendary'];
+const COMMON_DUPLICATE_LIMIT = 5;
 const DIFFICULTY_LEVELS = Array.from({ length: 16 }, (_, i) => i);
 function pwLinear(level, base, perArray) {
   // perArray length should be 6
@@ -138,8 +139,8 @@ const HEROES = [
       {
         id: 'nimble',
         name: '迅捷',
-        cost: 10,
-        description: '获得70%闪避，持续2回合',
+        cost: 40,
+        description: '获得40%闪避，持续3回合',
         type: 'buff'
       }
     ]
@@ -641,7 +642,7 @@ const ELITE_ENEMIES = [
     description: '首回合惊喜一击，死亡掉落翻倍金币。',
     baseRewards: { exp: { base: 90, per: 18 }, gold: { base: 90, per: 18 } },
     stats: (L) => ({
-      hp: pwLinear(L, 40, [12, 18, 24, 30, 24, 20]),
+      hp: pwLinear(L, 34, [10, 15, 24, 30, 24, 20]),
       attack: pwLinear(L, 16, [1.8, 2.4, 3.2, 3.8, 3.4, 3.0]),
       defense: pwLinear(L, 8, [0.4, 0.6, 0.8, 1.1, 1.0, 0.8]),
       resist: pwLinear(L, 28, [0.6, 0.8, 1.0, 1.2, 1.0, 0.8]),
@@ -656,7 +657,7 @@ const ELITE_ENEMIES = [
     description: '双段奥术飞弹并有法力护盾。',
     baseRewards: { exp: { base: 110, per: 20 }, gold: { base: 70, per: 14 } },
     stats: (L) => ({
-      hp: pwLinear(L, 25, [10, 16, 22, 28, 24, 20]),
+      hp: pwLinear(L, 21, [8, 12, 22, 28, 24, 20]),
       attack: pwLinear(L, 12, [1.6, 2.2, 3.0, 3.6, 3.2, 2.8]),
       defense: pwLinear(L, 12, [0.4, 0.6, 0.9, 1.2, 1.0, 0.8]),
       resist: pwLinear(L, 20, [0.8, 1.0, 1.2, 1.4, 1.2, 1.0]),
@@ -689,11 +690,29 @@ const HEART_DEMON = {
   baseRewards: { exp: { base: 200, per: 0 }, gold: { base: 200, per: 0 } },
   stats: (player) => {
     const L = player.level;
+    const base = player.heroId ? HEROES.find((h) => h.id === player.heroId) : null;
+    const baseStats = {
+      maxHp: player.stats.maxHp,
+      attack: player.stats.attack,
+      defense: player.stats.defense,
+      resist: player.stats.resist
+    };
+    if (base) {
+      // subtract additive and multiplicative bonuses to approximate base
+      const tempPlayer = JSON.parse(JSON.stringify(player));
+      tempPlayer.inventory.relics = [];
+      tempPlayer.permanent = { hpFlat: 0, attackFlat: 0, defenseFlat: 0, manaFlat: 0, resistFlat: 0 };
+      updatePlayerStats({ player: tempPlayer });
+      baseStats.maxHp = tempPlayer.stats.maxHp;
+      baseStats.attack = tempPlayer.stats.attack;
+      baseStats.defense = tempPlayer.stats.defense;
+      baseStats.resist = tempPlayer.stats.resist;
+    }
     return {
-      hp: Math.floor(player.stats.maxHp * 1.2 + 0.8 * L),
-      attack: Math.floor(player.stats.attack * 1.1 + 0.4 * L),
-      defense: Math.floor(player.stats.defense + 0.2 * L),
-      resist: Math.floor(player.stats.resist + 0.2 * L),
+      hp: Math.floor(baseStats.maxHp * 1.2 + 0.8 * L),
+      attack: Math.floor(baseStats.attack * 1.1 + 0.4 * L),
+      defense: Math.floor(baseStats.defense + 0.2 * L),
+      resist: Math.floor(baseStats.resist + 0.2 * L),
       type: 'mirror'
     };
   }
@@ -1402,6 +1421,17 @@ function renderPlayerPanel() {
     return;
   }
   const stats = player.stats;
+  const battleDodgeBonus =
+    gameState.encounter?.type === 'battle'
+      ? getBuffValue(gameState.encounter.playerBuffs, 'dodge')
+      : 0;
+  const effectiveDodge = clamp(stats.dodge + battleDodgeBonus, 0, 0.9);
+  const dodgeDelta = effectiveDodge - stats.dodge;
+  const dodgeDeltaPercent = Math.round(dodgeDelta * 100);
+  const dodgeDisplayText =
+    Math.abs(dodgeDelta) > 0.0001
+      ? `${Math.round(effectiveDodge * 100)}% (${dodgeDeltaPercent > 0 ? '+' : ''}${dodgeDeltaPercent}%)`
+      : `${Math.round(effectiveDodge * 100)}%`;
   playerSummary.textContent = `${player.heroName} · 等级${player.level}`;
   hpBar.style.width = `${(player.currentHp / stats.maxHp) * 100}%`;
   hpText.textContent = `${player.currentHp} / ${stats.maxHp}`;
@@ -1416,7 +1446,7 @@ function renderPlayerPanel() {
     <div><span>法术抗性</span><strong>${stats.resist}</strong></div>
     <div><span>暴击率</span><strong>${Math.round(stats.critChance * 100)}%</strong></div>
     <div><span>暴击伤害</span><strong>${Math.round((stats.critDamage + 1) * 100)}%</strong></div>
-    <div><span>闪避率</span><strong>${Math.round(stats.dodge * 100)}%</strong></div>
+    <div><span>闪避率</span><strong>${dodgeDisplayText}</strong></div>
   `;
 
   goldValue.textContent = player.gold;
@@ -2365,10 +2395,16 @@ function executeEnemyAttack() {
     }
     total += damageValue;
     applyDamageToPlayer(gameState, damageValue);
+    if (!gameState.encounter || gameState.encounter.type !== 'battle') {
+      return;
+    }
     if (player.stats.thornsPercent) {
       const reflect = Math.floor(damageValue * player.stats.thornsPercent);
       dealDamageToEnemy(reflect);
       pushBattleLog(`荆棘甲反弹${reflect}伤害。`);
+      if (tryEndBattleFromEnemyDefeat()) {
+        return;
+      }
     }
     if (player.stats.freezeOnHit && Math.random() < player.stats.freezeOnHit) {
       gameState.encounter.enemyStunned = 1;
@@ -2379,6 +2415,9 @@ function executeEnemyAttack() {
       enemy.currentHp = Math.min(enemy.maxHp, enemy.currentHp + heal);
     }
   }
+  if (!gameState.encounter || gameState.encounter.type !== 'battle') {
+    return;
+  }
   pushBattleLog(`${enemy.name}造成${total}点伤害。`);
   if (penalty?.turns > 0) {
     penalty.turns -= 1;
@@ -2386,9 +2425,17 @@ function executeEnemyAttack() {
       delete gameState.encounter.enemyAttackPenalty;
     }
   }
-  if (player.currentHp <= 0) {
-    concludeBattle(false);
+}
+
+function tryEndBattleFromEnemyDefeat() {
+  if (!gameState.encounter || gameState.encounter.type !== 'battle') {
+    return true;
   }
+  if (gameState.encounter.enemy.currentHp <= 0) {
+    concludeBattle(true);
+    return true;
+  }
+  return false;
 }
 
 function performOpeningStrike(enemy) {
@@ -2458,7 +2505,30 @@ function applyDamageToPlayer(state, damage) {
       player.statuses.shift();
     }
     pushBattleLog('命运庇佑耗尽，你被完全治愈并净化一项负面效果。');
+    return;
   }
+
+  if (player.currentHp <= 0) {
+    handlePlayerDeath(state);
+  }
+}
+
+function handlePlayerDeath(state) {
+  if (state !== gameState) return;
+  const inBattle = state.encounter?.type === 'battle';
+  if (inBattle) {
+    concludeBattle(false);
+    return;
+  }
+  if (handleDeathSave()) {
+    updateUI();
+    return;
+  }
+  pushLog('你伤重不支，旅程被迫中断。');
+  state.player.currentHp = 0;
+  state.player.currentMana = 0;
+  state.encounter = null;
+  updateUI();
 }
 
 function healPlayer(amount) {
@@ -2534,8 +2604,8 @@ function executeSkillEffect(skill, isEcho = false, extra = {}) {
       attackOptions
     );
   } else if (skill.id === 'nimble') {
-    addTemporaryBuff(gameState, { type: 'dodge', value: 0.7, duration: 2 });
-    pushBattleLog('疾速如风，闪避大幅提升。');
+    addTemporaryBuff(gameState, { type: 'dodge', value: 0.4, duration: 3 });
+    pushBattleLog('迅捷姿态展开，3回合内闪避+40%。');
   } else if (skill.id === 'meteor') {
     resolveAttackPattern({ type: 'magic', hits: [{ ratio: 3.25 }] }, true, attackOptions);
     if (!isEcho) {
@@ -2809,7 +2879,13 @@ function grantRelic(state, id) {
     return;
   }
   const inventory = state.player.inventory.relics;
-  if (relic.quality === 'rare') {
+  if (relic.quality === 'common') {
+    const count = inventory.filter((item) => item.id === relic.id).length;
+    if (count >= COMMON_DUPLICATE_LIMIT) {
+      pushLog(`已经拥有足够数量的【${relic.name}】（上限${COMMON_DUPLICATE_LIMIT}件）。`);
+      return;
+    }
+  } else if (relic.quality === 'rare') {
     const count = inventory.filter((item) => item.id === relic.id).length;
     const limit = difficultyLevel >= 12 ? 3 : 1;
     if (count >= limit) {
@@ -2841,8 +2917,14 @@ function rollRelicDrop(state, quality) {
   const pool = RELICS.filter((r) => r.quality === unlockedQuality);
   if (!pool.length) return;
   const multiplier = relicDropMultiplierForDifficulty(unlockedQuality);
-  const picks = Math.max(1, Math.floor(multiplier));
-  for (let i = 0; i < picks; i++) {
+  const basePicks = Math.max(1, Math.floor(multiplier));
+  const fractional = Math.max(0, multiplier - Math.floor(multiplier));
+  let extra = 0;
+  if (fractional > 0 && Math.random() < fractional) {
+    extra = 1;
+  }
+  const totalPicks = basePicks + extra;
+  for (let i = 0; i < totalPicks; i++) {
     const relic = randomChoice(pool);
     grantRelic(state, relic.id);
   }
