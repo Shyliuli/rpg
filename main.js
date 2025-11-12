@@ -28,9 +28,9 @@ function pwLinear(level, base, perArray) {
     L -= take;
   }
   let result = Math.floor(total);
-  const beyondSixthLayer = Math.max(0, Math.floor(level) - 150);
-  if (beyondSixthLayer > 0) {
-    const exponentialBoost = Math.pow(1.05, beyondSixthLayer);
+  const exponent = Math.max(0, Math.floor(level));
+  if (exponent > 0) {
+    const exponentialBoost = Math.pow(1.08, exponent);
     result = Math.floor(result * exponentialBoost);
   }
   return result;
@@ -55,6 +55,19 @@ function scaleStatsByDifficulty(stats) {
     defense: Math.max(0, Math.floor(stats.defense * mult)),
     resist: Math.max(0, Math.floor(stats.resist * mult))
   };
+}
+
+function applyHighDifficultyStatGrowth(stats, level) {
+  if (!stats) return stats;
+  if (difficultyLevel < 9 || level <= 30) return stats;
+  const hpMultiplier = difficultyLevel >= 12 ? 4 : 2;
+  if (typeof stats.hp === 'number') {
+    stats.hp = Math.max(1, Math.floor(stats.hp * hpMultiplier));
+  }
+  if (typeof stats.attack === 'number') {
+    stats.attack = Math.max(1, Math.floor(stats.attack * 1.7));
+  }
+  return stats;
 }
 
 function isQualityUnlocked(quality) {
@@ -504,7 +517,7 @@ const RELICS = [
     id: 'dreamRelic',
     name: '梦奇物',
     quality: 'legendary',
-    description: '每回合随机释放一个技能（蓝量消耗减半）'
+    description: '每回合随机释放一个技能（蓝量消耗加倍）'
   },
   {
     id: 'blackTulip',
@@ -516,38 +529,38 @@ const RELICS = [
 
 /* Relic mechanical effects subset (not every nuance is automated, but core bonuses are captured) */
 const RELIC_EFFECTS = {
-  warriorBadge: { attackPercent: 0.15 },
+  warriorBadge: { attackPercent: 0.1 },
   lifeAmulet: { hpPercent: 0.18 },
   sapphireRing: { manaPercent: 0.2 },
   ironBoots: { defensePercent: 0.15 },
   clothArmor: { resistFlat: 10 },
   luckyClover: { dodgeChance: 0.05 },
-  whetstone: { highHpBonus: 0.25 },
+  whetstone: { highHpBonus: 0.15 },
   apprenticeNotes: { expBonus: 0.15 },
-  critGloves: { critChance: 0.1 },
+  critGloves: { critChance: 0.08 },
   regenRing: { postBattleHeal: 0.05 },
   manaFlow: { battleStartMana: 10 },
   thickHide: { defensePercent: 0.18, hpPercent: 0.05 },
-  razorEdge: { attackPercent: 0.28, defensePercent: -0.1 },
+  razorEdge: { attackPercent: 0.18, defensePercent: -0.1 },
   explorerMap: { goldBonus: 0.1 },
-  shieldEmitter: { battleShieldPercent: 0.25, battleShieldDuration: 2 },
+  shieldEmitter: { battleShieldPercent: 0.15, battleShieldDuration: 2 },
   dragonScale: { defenseFlat: 35, armorPen: 15 },
   lichPhylactery: { resistFlat: 15, healOnKill: 0.05, magicPenFlat: 5 },
-  agileBoots: { dodgeChance: 0.1, empowerOnDodge: 0.6 },
-  arcaneCodex: { skillMagicBonus: 0.45, skillResistShred: 10 },
+  agileBoots: { dodgeChance: 0.1, empowerOnDodge: 0.3 },
+  arcaneCodex: { skillMagicBonus: 0.35, skillResistShred: 10 },
   berserkerSoul: { berserkerStacks: true },
-  eliteHunter: { damageVsElite: 0.4, damageVsNormal: -0.1 },
-  manaTide: { manaPerTurn: 20, spellManaRefund: 10 },
-  bloodthirstBlade: { basicAttackLeech: 0.25 },
+  eliteHunter: { damageVsElite: 0.3, damageVsNormal: -0.1 },
+  manaTide: { manaPerTurn: 10, spellManaRefund: 5 },
+  bloodthirstBlade: { basicAttackLeech: 0.15 },
   thornArmor: { thornsPercent: 0.15 },
-  wisdomBook: { expBonus: 0.35 },
-  preemptiveStrike: { battleStartStunChance: 0.4, preemptiveWeakenChance: 0.3 },
+  wisdomBook: { expBonus: 0.45 },
+  preemptiveStrike: { battleStartStunChance: 0.2, preemptiveWeakenChance: 0.2 },
   sourceOfLife: { healingBonus: 0.35 },
   fortress: { defensePercent: 0.35, hpPercent: 0.25, attackPercent: -0.05 },
-  heartOfRage: { attackPercent: 1.2, hpPercent: 0.55, nullifyDefense: true },
-  adventureMap: { roamBattleDelta: 0.25, battleExpBonus: 0.2, dropUpgradeChance: 0.05 },
+  heartOfRage: { attackPercent: 0.5, hpPercent: -0.2, nullifyDefense: true },
+  adventureMap: { roamBattleDelta: 0.25, battleExpBonus: 0.2, dropUpgradeChance: 0.15 },
   merchantFriend: { roamBattleDelta: -0.3, nonBattleReward: true, shopDiscount: 0.25 },
-  energyShield: { battleShieldPercent: 0.45, battleShieldDuration: 3 },
+  energyShield: { battleShieldPercent: 0.25, battleShieldDuration: 3 },
   luckyDice: { randomBattleBuff: true },
   shadowCloak: { dodgeChance: 0.2, shieldOnDodge: 0.3 },
   revengeSpirit: { lowHpBuff: true },
@@ -558,12 +571,12 @@ const RELIC_EFFECTS = {
     bonusMagicProc: { chance: 0.15, ratio: 0.6 },
     elementHeartDebuff: true
   },
-  deathEye: { critChance: 0.15, critDamage: 0.8 },
-  warBanner: { attackPercent: 0.9, critChance: 0.45, hpPercent: -0.2 },
-  frostCore: { freezeOnHit: 0.3 },
-  sunEmblem: { turnStartMagic: 0.45 },
+  deathEye: { critChance: 0.15, critDamage: 0.5 },
+  warBanner: { attackPercent: 0.4, critChance: 0.35, hpPercent: -0.2 },
+  frostCore: { freezeOnHit: 0.35 },
+  sunEmblem: { turnStartMagic: 0.35 },
   chaosRing: { enemyWeakenPercent: 0.15 },
-  bloodPrince: { lifeSteal: 0.4 },
+  bloodPrince: { lifeSteal: 0.3 },
   destiny: { critChance: 0.2, destinyProc: true },
   epiphanyCrystal: { allStatsPercent: 0.1, xpFixed: 1500, bonusLevels: 10 },
   ruination: { ruinDamage: 0.08, defenseShred: 50 },
@@ -1904,12 +1917,14 @@ function spawnEnemyFrom(template) {
   if (template === HEART_DEMON) {
     const stats = template.stats(player);
     info = scaleStatsByDifficulty(stats);
+    info = applyHighDifficultyStatGrowth(info, player.level);
     info.type = stats.type;
     info.hits = stats.hits;
     info.modifier = stats.modifier;
   } else {
     const stats = template.stats(level);
     info = scaleStatsByDifficulty(stats);
+    info = applyHighDifficultyStatGrowth(info, level);
     info.type = stats.type;
     info.hits = stats.hits;
     info.modifier = stats.modifier;
@@ -2130,16 +2145,16 @@ function resolveAttackPattern(pattern, isSkill, options = {}) {
   const hits = pattern.hits || [{ ratio: pattern.multiplier || 1 }];
   const attackBuff = getBuffValue(gameState.encounter.playerBuffs, 'attack');
   const critBuff = getBuffValue(gameState.encounter.playerBuffs, 'crit');
-  const lowHpActive =
-    stats.lowHpBuff && player.currentHp / player.stats.maxHp < 0.3 ? 1 : 0;
+  const lowHpBonusActive = stats.lowHpBuff && player.currentHp / player.stats.maxHp < 0.3;
+  const lowHpAttackBonus = lowHpBonusActive ? 0.7 : 0;
   const berserkBonus = stats.berserker
-    ? clamp(Math.floor((1 - player.currentHp / player.stats.maxHp) / 0.1) * 0.08, 0, 0.8)
+    ? clamp(Math.floor((1 - player.currentHp / player.stats.maxHp) / 0.1) * 0.04, 0, 0.4)
     : 0;
   const blackTulipBonus = options.blackTulipBonus || 0;
   const attackMultiplier = 1 + blackTulipBonus;
   const attackPower =
     stats.attack *
-    (1 + attackBuff + (player.tempEmpower || 0) + lowHpActive + berserkBonus) *
+    (1 + attackBuff + (player.tempEmpower || 0) + lowHpAttackBonus + berserkBonus) *
     attackMultiplier;
   let totalDamage = 0;
   let manaRefund = 0;
@@ -2178,7 +2193,7 @@ function resolveAttackPattern(pattern, isSkill, options = {}) {
       baseDamage = effectiveDamage;
     }
     baseDamage = applyBattleMultipliers(baseDamage, enemy.tier);
-    const critChance = stats.critChance + critBuff + (lowHpActive ? 0.2 : 0);
+    const critChance = stats.critChance + critBuff + (lowHpBonusActive ? 0.2 : 0);
     const crit = checkCrit(critChance);
     if (crit) {
       baseDamage = Math.floor(baseDamage * (1 + stats.critDamage));
@@ -2987,7 +3002,7 @@ function triggerDreamRelicSkill() {
   const hero = HEROES.find((h) => h.id === player.heroId);
   if (!hero) return;
   const skill = randomChoice(hero.skills);
-  const manaCost = Math.max(0, Math.ceil((skill.cost || 0) / 2));
+  const manaCost = Math.max(0, Math.ceil((skill.cost || 0) * 2));
   if (player.currentMana < manaCost) return;
   player.currentMana -= manaCost;
   pushBattleLog(`梦奇物溢出能量，自动施放【${skill.name}】。`);
