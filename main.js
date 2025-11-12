@@ -66,6 +66,17 @@ function isEventUnlocked(event) {
   return !event.minDifficulty || difficultyLevel >= event.minDifficulty;
 }
 
+function relicDropMultiplierForDifficulty(quality) {
+  if (difficultyLevel <= 9) return 1;
+  if (quality === 'legendary') {
+    return 1 + Math.max(0, difficultyLevel - 9) * 0.25;
+  }
+  if (quality === 'epic') {
+    return 1 + Math.max(0, difficultyLevel - 9) * 0.15;
+  }
+  return 1;
+}
+
 /* Hero definitions */
 const HEROES = [
   {
@@ -2741,7 +2752,14 @@ function grantRelic(state, id) {
     return;
   }
   const inventory = state.player.inventory.relics;
-  if (['rare', 'epic', 'legendary'].includes(relic.quality)) {
+  if (relic.quality === 'rare') {
+    const count = inventory.filter((item) => item.id === relic.id).length;
+    const limit = difficultyLevel >= 12 ? 3 : 1;
+    if (count >= limit) {
+      pushLog(`已经拥有足够数量的【${relic.name}】。`);
+      return;
+    }
+  } else if (['epic', 'legendary'].includes(relic.quality)) {
     if (inventory.some((item) => item.id === relic.id)) {
       pushLog(`已经拥有${relic.name}，无法重复。`);
       return;
@@ -2765,8 +2783,12 @@ function rollRelicDrop(state, quality) {
   if (!unlockedQuality) return;
   const pool = RELICS.filter((r) => r.quality === unlockedQuality);
   if (!pool.length) return;
-  const relic = randomChoice(pool);
-  grantRelic(state, relic.id);
+  const multiplier = relicDropMultiplierForDifficulty(unlockedQuality);
+  const picks = Math.max(1, Math.floor(multiplier));
+  for (let i = 0; i < picks; i++) {
+    const relic = randomChoice(pool);
+    grantRelic(state, relic.id);
+  }
 }
 
 function removeRandomRelic(state) {
