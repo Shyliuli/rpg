@@ -30,7 +30,7 @@ function pwLinear(level, base, perArray) {
   let result = Math.floor(total);
   const exponent = Math.max(0, Math.floor(level));
   if (exponent > 0) {
-    const exponentialBoost = Math.pow(1.08, exponent);
+    const exponentialBoost = Math.pow(1.04, exponent);
     result = Math.floor(result * exponentialBoost);
   }
   return result;
@@ -65,7 +65,7 @@ function applyHighDifficultyStatGrowth(stats, level) {
     stats.hp = Math.max(1, Math.floor(stats.hp * hpMultiplier));
   }
   if (typeof stats.attack === 'number') {
-    const attackMultiplier = difficultyLevel >= 12 ? 1.35 : 1;
+    const attackMultiplier = difficultyLevel >= 12 ? 1.15 : 1;
     stats.attack = Math.max(1, Math.floor(stats.attack * attackMultiplier));
   }
   return stats;
