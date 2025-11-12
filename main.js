@@ -60,12 +60,13 @@ function scaleStatsByDifficulty(stats) {
 function applyHighDifficultyStatGrowth(stats, level) {
   if (!stats) return stats;
   if (difficultyLevel < 9 || level <= 30) return stats;
-  const hpMultiplier = difficultyLevel >= 12 ? 4 : 2;
+  const hpMultiplier = difficultyLevel >= 12 ? 3 : 1.5;
   if (typeof stats.hp === 'number') {
     stats.hp = Math.max(1, Math.floor(stats.hp * hpMultiplier));
   }
   if (typeof stats.attack === 'number') {
-    stats.attack = Math.max(1, Math.floor(stats.attack * 1.7));
+    const attackMultiplier = difficultyLevel >= 12 ? 1.35 : 1;
+    stats.attack = Math.max(1, Math.floor(stats.attack * attackMultiplier));
   }
   return stats;
 }
@@ -259,25 +260,25 @@ const POTIONS = [
 
 /* Relic definitions */
 const RELICS = [
-  { id: 'warriorBadge', name: '勇士徽章', quality: 'common', description: '攻击力+15%' },
+  { id: 'warriorBadge', name: '勇士徽章', quality: 'common', description: '攻击力+10%' },
   { id: 'lifeAmulet', name: '生命护符', quality: 'common', description: '最大生命值+18%' },
   { id: 'sapphireRing', name: '蓝宝石戒指', quality: 'common', description: '最大蓝量+20%' },
   { id: 'ironBoots', name: '铁靴', quality: 'common', description: '防御力+15%' },
   { id: 'clothArmor', name: '布甲', quality: 'common', description: '法术抗性+10' },
   { id: 'luckyClover', name: '幸运四叶草', quality: 'common', description: '闪避率+5%' },
-  { id: 'whetstone', name: '磨刀石', quality: 'common', description: '对高生命敌人伤害+25%' },
+  { id: 'whetstone', name: '磨刀石', quality: 'common', description: '对生命值高于80%的敌人伤害+15%' },
   { id: 'apprenticeNotes', name: '学徒笔记', quality: 'common', description: '经验获取+15%' },
-  { id: 'critGloves', name: '暴击手套', quality: 'common', description: '暴击率+10%' },
+  { id: 'critGloves', name: '暴击手套', quality: 'common', description: '暴击率+8%' },
   { id: 'regenRing', name: '回复戒指', quality: 'common', description: '战斗后回复5%最大生命' },
   { id: 'manaFlow', name: '法力流', quality: 'common', description: '战斗开始回复10点蓝量' },
   { id: 'thickHide', name: '厚皮', quality: 'common', description: '防御+18%，生命+5%' },
-  { id: 'razorEdge', name: '锋锐', quality: 'common', description: '攻击+28%，防御-10%' },
+  { id: 'razorEdge', name: '锋锐', quality: 'common', description: '攻击+18%，防御-10%' },
   { id: 'explorerMap', name: '探险家地图', quality: 'common', description: '金币获得+10%' },
   {
     id: 'shieldEmitter',
     name: '小护盾发生器',
     quality: 'common',
-    description: '战斗开始获得25%生命护盾，持续2回合'
+    description: '战斗开始获得15%最大生命护盾，持续2回合'
   },
   {
     id: 'dragonScale',
@@ -295,37 +296,37 @@ const RELICS = [
     id: 'agileBoots',
     name: '灵巧靴',
     quality: 'rare',
-    description: '闪避+10%，闪避后下次攻击伤害+60%'
+    description: '闪避+10%，闪避后下次攻击伤害+30%'
   },
   {
     id: 'arcaneCodex',
     name: '奥术法典',
     quality: 'rare',
-    description: '技能法术伤害+45%，命中后额外降低敌人10点法抗'
+    description: '技能法术伤害+35%，命中后额外降低敌人10点法抗'
   },
   {
     id: 'berserkerSoul',
     name: '狂战士之魂',
     quality: 'rare',
-    description: '每失去10%生命，攻击+8%'
+    description: '每失去10%生命，攻击+4%'
   },
   {
     id: 'eliteHunter',
     name: '精英猎手',
     quality: 'rare',
-    description: '对精英+40%伤害，对普通-10%'
+    description: '对精英+30%伤害，对普通-10%'
   },
   {
     id: 'manaTide',
     name: '法力潮汐护符',
     quality: 'rare',
-    description: '每回合回复20点蓝，造成法术伤害立刻回10点'
+    description: '每回合回复10点蓝，造成法术伤害立刻回5点'
   },
   {
     id: 'bloodthirstBlade',
     name: '嗜血刀',
     quality: 'rare',
-    description: '普通攻击吸血25%'
+    description: '普通攻击命中后回复造成伤害15%的生命'
   },
   {
     id: 'thornArmor',
@@ -337,13 +338,13 @@ const RELICS = [
     id: 'wisdomBook',
     name: '智慧之书',
     quality: 'rare',
-    description: '经验获取+35%'
+    description: '经验获取+45%'
   },
   {
     id: 'preemptiveStrike',
     name: '先发制人',
     quality: 'rare',
-    description: '战斗开始40%概率眩晕敌人，30%概率使敌人攻击力-50%（2回合）'
+    description: '战斗开始20%概率眩晕敌人，20%概率使敌人攻击力-50%（2回合）'
   },
   {
     id: 'sourceOfLife',
@@ -361,13 +362,13 @@ const RELICS = [
     id: 'heartOfRage',
     name: '狂怒之心',
     quality: 'rare',
-    description: '攻击+120%，生命+55%，防御与法抗归零'
+    description: '攻击+50%，生命-20%，防御与法抗归零'
   },
   {
     id: 'adventureMap',
     name: '冒险者的地图',
     quality: 'rare',
-    description: '战斗概率+25%，经验+20%，5%概率提升掉落品质'
+    description: '战斗概率+25%，经验+20%，每场战斗15%概率提升掉落品质'
   },
   {
     id: 'merchantFriend',
@@ -379,7 +380,7 @@ const RELICS = [
     id: 'energyShield',
     name: '能量护盾',
     quality: 'rare',
-    description: '每场战斗获得45%生命护盾，持续3回合'
+    description: '每场战斗开始获得25%最大生命护盾，持续3回合'
   },
   {
     id: 'luckyDice',
@@ -397,7 +398,7 @@ const RELICS = [
     id: 'revengeSpirit',
     name: '复仇之魂',
     quality: 'rare',
-    description: '生命低于30%时攻击+100%，暴击+20%'
+    description: '生命低于30%时攻击+70%，暴击+20%'
   },
   {
     id: 'timeHourglass',
@@ -409,37 +410,37 @@ const RELICS = [
     id: 'immortalWard',
     name: '不朽之守护',
     quality: 'epic',
-    description: '首次致命伤害保留1血并获得护盾与攻击增益'
+    description: '每场战斗首次遭遇致命伤害时保留1点生命并获得30%护盾与35%攻击（持续3回合）'
   },
   {
     id: 'elementHeart',
     name: '元素之心',
     quality: 'epic',
-    description: '攻击+25%，造成伤害有15%概率附加60%法术伤害，并降低敌人15点法抗、20点攻击'
+    description: '攻击+25%，每次攻击令敌人法抗-15、攻击-5'
   },
   {
     id: 'deathEye',
     name: '死神之眼',
     quality: 'epic',
-    description: '暴击+15%，暴击伤害+80%'
+    description: '暴击+15%，暴击伤害+50%'
   },
   {
     id: 'warBanner',
     name: '战争旗帜',
     quality: 'epic',
-    description: '攻击+90%，暴击+45%，生命-20%'
+    description: '攻击+40%，暴击+35%，生命-20%'
   },
   {
     id: 'frostCore',
     name: '冰霜之核',
     quality: 'epic',
-    description: '受击时30%概率冰冻敌人'
+    description: '受击时有35%概率冰冻敌人一回合'
   },
   {
     id: 'sunEmblem',
     name: '太阳徽章',
     quality: 'epic',
-    description: '每回合开始对敌人造成45%攻击力法术伤害'
+    description: '每回合开始对敌人造成35%攻击力法术伤害'
   },
   {
     id: 'chaosRing',
@@ -451,7 +452,7 @@ const RELICS = [
     id: 'bloodPrince',
     name: '吸血亲王',
     quality: 'epic',
-    description: '所有伤害40%吸血，对精英与Boss减半'
+    description: '所有伤害30%吸血，对精英与Boss减半'
   },
   {
     id: 'destiny',
@@ -568,7 +569,6 @@ const RELIC_EFFECTS = {
   immortalWard: { deathSave: 'immortalWard' },
   elementHeart: {
     attackPercent: 0.25,
-    bonusMagicProc: { chance: 0.15, ratio: 0.6 },
     elementHeartDebuff: true
   },
   deathEye: { critChance: 0.15, critDamage: 0.5 },
@@ -2203,11 +2203,6 @@ function resolveAttackPattern(pattern, isSkill, options = {}) {
         pushBattleLog(`天命触发，额外造成${extra}点法术伤害。`);
       }
     }
-    if (stats.bonusMagicProc && Math.random() < stats.bonusMagicProc.chance) {
-      const extra = Math.floor(stats.attack * stats.bonusMagicProc.ratio);
-      enemy.currentHp = Math.max(0, enemy.currentHp - extra);
-      pushBattleLog(`元素之心共鸣，附加${extra}点法术伤害。`);
-    }
     if (stats.ruinDamage) {
       const extra = Math.floor(player.stats.maxHp * stats.ruinDamage);
       enemy.currentHp = Math.max(0, enemy.currentHp - extra);
@@ -2265,9 +2260,9 @@ function applyOnHitDebuffs(enemy, context) {
     const prevResist = enemy.resist;
     const prevAttack = enemy.attack;
     enemy.resist = Math.max(0, enemy.resist - 15);
-    enemy.attack = Math.max(0, enemy.attack - 20);
+    enemy.attack = Math.max(0, enemy.attack - 5);
     if (enemy.resist !== prevResist || enemy.attack !== prevAttack) {
-      logs.push('元素之心蚕食敌人（法抗-15，攻击-20）');
+      logs.push('元素之心蚕食敌人（法抗-15，攻击-5）');
     }
   }
   if (context.ruinDefenseShred) {
