@@ -17,7 +17,7 @@ const HEROES = [
     name: '战士',
     summary: '稳健坦克型，普攻为100%物理伤害，拥有蓄力与冲撞。',
     stats: {
-      hp: { base: 100, per: 10 },
+      hp: { base: 100, per: 12 },
       attack: { base: 25, per: 2 },
       defense: { base: 25, per: 1.5 },
       resist: { base: 35, per: 1 },
@@ -47,7 +47,7 @@ const HEROES = [
     summary: '高爆发，普攻为100%物理，技能背刺与迅捷。',
     stats: {
       hp: { base: 60, per: 10 },
-      attack: { base: 35, per: 2 },
+      attack: { base: 35, per: 4 },
       defense: { base: 10, per: 1.5 },
       resist: { base: 15, per: 1 },
       mana: { base: 60, per: 5 }
@@ -76,9 +76,9 @@ const HEROES = [
     summary: '法系爆发，普攻为两段55%法术伤害，技能毁灭与源泉。',
     stats: {
       hp: { base: 75, per: 10 },
-      attack: { base: 20, per: 2 },
+      attack: { base: 20, per: 3 },
       defense: { base: 10, per: 1.5 },
-      resist: { base: 40, per: 1 },
+      resist: { base: 40, per: 1.5 },
       mana: { base: 90, per: 5 }
     },
     normalAttack: {
@@ -486,7 +486,7 @@ const NORMAL_ENEMIES = [
     baseRewards: { exp: { base: 30, per: 6 }, gold: { base: 15, per: 4 } },
     stats: (L) => ({
       hp: Math.floor(90 + 20 * L + 18 * Math.pow(1.06, L)),
-      attack: Math.floor(20 + 2 * L + 4 * Math.pow(1.07, L)),
+      attack: Math.floor(20 + 3.5 * L + 4 * Math.pow(1.07, L)),
       defense: Math.floor(20 + 2.2 * Math.pow(1.04, L)),
       resist: Math.floor(8 + 1.2 * L),
       type: 'physical'
@@ -504,10 +504,10 @@ const NORMAL_ENEMIES = [
     baseRewards: { exp: { base: 28, per: 9 }, gold: { base: 22, per: 6 } },
     stats: (L) => ({
       hp: Math.floor(80 + 18 * L + 16 * Math.pow(1.07, L)),
-      attack: Math.floor(26 + 2.8 * L + 5 * Math.pow(1.08, L)),
+      attack: Math.floor(24 + 3.2 * L + 5 * Math.pow(1.08, L)),
       defense: Math.floor(22 + 2 * Math.pow(1.04, L)),
-      resist: Math.floor(15 + 1.4 * L),
-      type: 'physical'
+      resist: Math.floor(18 + 1.6 * L),
+      type: 'magic'
     }),
     lifeSteal: 0.3
   },
@@ -532,7 +532,7 @@ const NORMAL_ENEMIES = [
     baseRewards: { exp: { base: 45, per: 11 }, gold: { base: 28, per: 8 } },
     stats: (L) => ({
       hp: Math.floor(150 + 28 * L + 30 * Math.pow(1.07, L)),
-      attack: Math.floor(30 + 3.2 * L + 7 * Math.pow(1.07, L)),
+      attack: Math.floor(30 + 4.2 * L + 7 * Math.pow(1.07, L)),
       defense: Math.floor(26 + 2.4 * Math.pow(1.04, L)),
       resist: Math.floor(5 + 1.1 * L),
       type: 'physical'
@@ -1637,6 +1637,7 @@ function spawnEnemyFrom(template) {
     guaranteedRelicId: template.guaranteedRelicId
   };
   enemy.shield = 0;
+  enemy.isHeartDemon = template === HEART_DEMON;
   return enemy;
 }
 
@@ -2256,6 +2257,7 @@ function concludeBattle(victory) {
     if (isHeartDemon(enemy)) {
       grantRelic(gameState, 'epiphanyCrystal');
       grantUniqueRareRelic(gameState);
+      pushBattleLog('心魔幻影的残影崩解，掉落了【顿悟结晶】与额外奖励。');
     }
     gameState.encounter = null;
     tickPersistentStatuses(gameState.player);
@@ -2537,7 +2539,7 @@ function tickBattleCooldowns(player) {
 }
 
 function isHeartDemon(enemy) {
-  return enemy && (enemy.id === 'heartDemon' || enemy.name === '心魔幻影');
+  return !!(enemy && (enemy.isHeartDemon || enemy.id === 'heartDemon' || enemy.name === '心魔幻影'));
 }
 
 function startGame() {
