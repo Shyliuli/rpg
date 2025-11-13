@@ -28,9 +28,10 @@ function pwLinear(level, base, perArray) {
     L -= take;
   }
   let result = Math.floor(total);
-  const exponent = Math.max(0, Math.floor(level));
-  if (exponent > 0) {
-    const exponentialBoost = Math.pow(1.02, exponent);
+  // 150级后额外指数增益：按 1.010^(L-150) 平滑增强
+  const extraLevels = Math.max(0, Math.floor(level - 150));
+  if (extraLevels > 0) {
+    const exponentialBoost = Math.pow(1.010, extraLevels);
     result = Math.floor(result * exponentialBoost);
   }
   return result;
@@ -490,7 +491,7 @@ const RELICS = [
     id: 'ambrosia',
     name: '琼浆玉液',
     quality: 'epic',
-    description: '立刻升级30级；等级成长改为额外乘以1.03^(L)'
+    description: '立刻升级30点；等级成长改为额外乘以1.005^(L)'
   },
   {
     id: 'epiphanyCrystal',
@@ -623,7 +624,7 @@ const RELIC_EFFECTS = {
   destinyAegis: { destinyWard: 3 },
   spellBreaker: { resistFlatShredOnHit: 3, spellBreakerMinResist: 85 },
   leafyCan: { skillGrantsPhysBuff: 0.45 },
-  ambrosia: { levelGrowthExpBase: 1.03, bonusLevels: 30 }
+  ambrosia: { levelGrowthExpBase: 1.005, bonusLevels: 30 }
 };
 
 /* Enemy pools */
