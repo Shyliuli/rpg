@@ -410,6 +410,12 @@ const RELICS = [
     description: '生命低于30%时攻击+70%，暴击+20%'
   },
   {
+    id: 'leafyCan',
+    name: '绿叶菜罐头',
+    quality: 'rare',
+    description: '释放技能后获得1回合45%物理攻击加成'
+  },
+  {
     id: 'timeHourglass',
     name: '时间沙漏',
     quality: 'epic',
@@ -446,6 +452,12 @@ const RELICS = [
     description: '受击时有35%概率冰冻敌人一回合'
   },
   {
+    id: 'spellBreaker',
+    name: '法术崩坏者',
+    quality: 'legendary',
+    description: '将敌方法术抗性设为不低于85；每次攻击降低3点法抗'
+  },
+  {
     id: 'sunEmblem',
     name: '太阳徽章',
     quality: 'epic',
@@ -468,6 +480,12 @@ const RELICS = [
     name: '天命',
     quality: 'epic',
     description: '暴击+20%，暴击后附带10%当前生命的法术伤害'
+  },
+  {
+    id: 'ambrosia',
+    name: '琼浆玉液',
+    quality: 'epic',
+    description: '立刻升级30级；等级成长改为额外乘以1.03^(L)'
   },
   {
     id: 'epiphanyCrystal',
@@ -597,7 +615,10 @@ const RELIC_EFFECTS = {
   steelResolve: { steelResolve: true },
   eternalEmber: { eternalEmber: true },
   starlitBastion: { starlitBastion: true },
-  destinyAegis: { destinyWard: 3 }
+  destinyAegis: { destinyWard: 3 },
+  spellBreaker: { resistFlatShredOnHit: 3, spellBreakerMinResist: 85 },
+  leafyCan: { skillGrantsPhysBuff: 0.45 },
+  ambrosia: { levelGrowthExpBase: 1.03, bonusLevels: 30 }
 };
 
 /* Enemy pools */
@@ -766,6 +787,29 @@ const EVENT_DEFS = [
         id: 'right',
         label: '走右路（获得商人之友）',
         resolve: (state) => grantRelic(state, 'merchantFriend')
+      }
+    ]
+  },
+  {
+    id: 'immortalMoment',
+    name: '你已成仙！',
+    description: '大道已成，你将如何抉择？',
+    once: true,
+    options: [
+      {
+        id: 'ascend',
+        label: '羽化飞升（结束游戏）',
+        resolve: (state) => {
+          state.flags.gameOver = true;
+          state.encounter = null;
+          pushLog('你羽化飞升，功行圆满。游戏结束。');
+          return true;
+        }
+      },
+      {
+        id: 'mortalWalk',
+        label: '红尘漫步（继续游戏）',
+        resolve: () => true
       }
     ]
   },
@@ -1038,7 +1082,9 @@ const defaultState = () => ({
   flags: {
     firstEventShown: false,
     meditationRisk: false,
-    epiphanyGranted: false
+    epiphanyGranted: false,
+    immortalEventShown: false,
+    gameOver: false
   }
 });
 
@@ -1132,6 +1178,10 @@ function ensurePlayer() {
   if (!gameState.player) {
     pushLog('请先选择职业。');
     heroModal.classList.add('visible');
+    return false;
+  }
+  if (gameState.flags?.gameOver) {
+    pushLog('游戏已结束，如需继续，请重开一局。');
     return false;
   }
   return true;
@@ -1298,8 +1348,15 @@ function updatePlayerStats(state) {
   const hero = HEROES.find((h) => h.id === state.player.heroId);
   if (!hero) return;
   const { level } = state.player;
-  const applyFormula = (stat) =>
-    Math.floor(hero.stats[stat].base + hero.stats[stat].per * level);
+  const relicMods = aggregateRelicBonuses(state.player);
+  const growthBase = relicMods.levelGrowthExpBase || null;
+  const applyFormula = (stat) => {
+    const base = hero.stats[stat].base;
+    const per = hero.stats[stat].per;
+    const growthMultiplier = growthBase ? Math.pow(growthBase, level) : 1;
+    const growth = per * level * growthMultiplier;
+    return Math.floor(base + growth);
+  };
   const baseStats = {
     maxHp: applyFormula('hp') + state.player.permanent.hpFlat,
     attack: applyFormula('attack') + state.player.permanent.attackFlat,
@@ -1314,7 +1371,7 @@ function updatePlayerStats(state) {
     lifeSteal: 0
   };
 
-  const relicMods = aggregateRelicBonuses(state.player);
+  // relicMods 已提前计算
   const statKeys = ['maxHp', 'attack', 'defense', 'resist', 'maxMana'];
   statKeys.forEach((key) => {
     const percentKey =
@@ -1407,6 +1464,8 @@ function updatePlayerStats(state) {
   state.player.stats.magicPenFlat = relicMods.magicPenFlat || 0;
   state.player.stats.magicPenPercent = relicMods.magicPenPercent || 0;
   state.player.stats.skillResistShred = relicMods.skillResistShred || 0;
+  state.player.stats.resistFlatShredOnHit = relicMods.resistFlatShredOnHit || 0;
+  state.player.stats.spellBreakerMinResist = relicMods.spellBreakerMinResist || 0;
   state.player.stats.elementHeartDebuff = !!relicMods.elementHeartDebuff;
   state.player.stats.ruinDefenseShred = relicMods.defenseShred || 0;
   state.player.stats.preemptiveWeakenChance = relicMods.preemptiveWeakenChance || 0;
@@ -1416,6 +1475,7 @@ function updatePlayerStats(state) {
   state.player.stats.eternalEmber = !!relicMods.eternalEmber;
   state.player.stats.starlitBastion = !!relicMods.starlitBastion;
   state.player.stats.destinyWard = relicMods.destinyWard || 0;
+  state.player.stats.skillGrantsPhysBuff = relicMods.skillGrantsPhysBuff || 0;
 }
 
 function aggregateRelicBonuses(player) {
@@ -1565,17 +1625,33 @@ function renderShop(container, encounter) {
   encounter.items.forEach((item) => {
     const card = document.createElement('div');
     card.className = 'relic-card';
+    const maxQty = computeMaxPurchasableCount(item.id, item.price);
+    const affordable = Math.max(0, Math.floor(gameState.player.gold / item.price));
+    const disabled = affordable <= 0 || maxQty <= 0;
     card.innerHTML = `
       <header>
         <span>${item.name}</span>
         <span>${item.price} 金币</span>
       </header>
       <p>${item.description}</p>
-      <button ${gameState.player.gold < item.price ? 'disabled' : ''}>购买</button>
+      <div class="shop-qty">
+        <label>数量：<span class="qty-val">1</span></label>
+        <input type="range" min="1" max="${Math.max(1, maxQty)}" value="1" class="qty-range" />
+      </div>
+      <button ${disabled ? 'disabled' : ''}>购买</button>
     `;
-    card.querySelector('button').addEventListener('click', () =>
-      purchaseItem(item.id, item.price)
-    );
+    const range = card.querySelector('.qty-range');
+    const label = card.querySelector('.qty-val');
+    range.addEventListener('input', () => {
+      const maxNow = computeMaxPurchasableCount(item.id, item.price);
+      range.max = String(Math.max(1, maxNow));
+      if (parseInt(range.value) > maxNow) range.value = String(Math.max(1, maxNow));
+      label.textContent = range.value;
+    });
+    card.querySelector('button').addEventListener('click', () => {
+      const qty = clamp(parseInt(range.value || '1'), 1, computeMaxPurchasableCount(item.id, item.price));
+      purchaseItem(item.id, item.price, qty);
+    });
     list.appendChild(card);
   });
   shopDiv.appendChild(list);
@@ -1865,6 +1941,15 @@ function openChest() {
 
 function triggerEvent() {
   let event = null;
+  // 150级后的第一场随机事件：你已成仙！
+  if (gameState.player && gameState.player.level >= 150 && !gameState.flags.immortalEventShown) {
+    const imm = EVENT_DEFS.find((e) => e.id === 'immortalMoment');
+    if (imm && (!imm.once || !imm.triggered)) {
+      event = imm;
+      if (imm.once) imm.triggered = true;
+      gameState.flags.immortalEventShown = true;
+    }
+  }
   if (!gameState.flags.firstEventShown) {
     const starter = EVENT_DEFS.find(
       (e) => e.id === 'forkInRoad' && (!e.once || !e.triggered) && isEventUnlocked(e)
@@ -1946,29 +2031,99 @@ function handleMeditate() {
 }
 
 /* Shop purchase */
-function purchaseItem(id, price) {
+function purchaseItem(id, price, quantity = 1) {
   const player = gameState.player;
-  if (player.gold < price) {
+  const maxQty = computeMaxPurchasableCount(id, price);
+  const qty = clamp(Math.floor(quantity || 1), 1, maxQty);
+  if (qty <= 0) {
+    pushLog('已达购买上限或金币不足，未扣除金币。');
+    return;
+  }
+  const totalCost = price * qty;
+  if (player.gold < totalCost) {
     pushLog('金币不足，无法购买。');
     return;
   }
-  player.gold -= price;
   if (id.startsWith('potion:')) {
     const potionId = id.split(':')[1];
     const potion = POTIONS.find((p) => p.id === potionId);
     if (potionId === 'attributeBoost') {
-      delete player.inventory.potions[potionId];
-      applyAttributeBoost(gameState, 'shop');
+      // 立即生效型，不入背包，多次购买逐次生效
+      for (let i = 0; i < qty; i++) {
+        applyAttributeBoost(gameState, 'shop');
+      }
+      player.gold -= totalCost;
+      pushLog(`购买了${qty}份属性增强剂。`);
     } else {
-      player.inventory.potions[potionId] = (player.inventory.potions[potionId] || 0) + 1;
-      pushLog(`购买了${potion?.name ?? '未知药剂'}`);
+      const affordableQty = Math.min(qty, Math.floor(player.gold / price));
+      if (affordableQty <= 0) {
+        pushLog('金币不足，无法购买。');
+        return;
+      }
+      player.inventory.potions[potionId] = (player.inventory.potions[potionId] || 0) + affordableQty;
+      player.gold -= affordableQty * price;
+      pushLog(`购买了${potion?.name ?? '未知药剂'} ×${affordableQty}`);
     }
   } else if (id.startsWith('relic:')) {
     const relicId = id.split(':')[1];
-    grantRelic(gameState, relicId);
+    let bought = 0;
+    for (let i = 0; i < qty; i++) {
+      const remain = relicPurchaseRemaining(relicId);
+      const canAfford = player.gold >= price;
+      if (!canAfford || remain <= 0) break;
+      const success = tryGrantRelic(gameState, relicId);
+      if (!success) break;
+      player.gold -= price;
+      bought += 1;
+    }
+    if (bought === 0) {
+      pushLog('已达购买上限或金币不足，未扣除金币。');
+    } else {
+      pushLog(`成功购买并获得【${RELICS.find((r) => r.id === relicId)?.name || '藏品'}】 ×${bought}`);
+    }
   }
   updatePlayerStats(gameState);
   updateUI();
+}
+
+function getOwnedRelicCount(id) {
+  return gameState.player.inventory.relics.filter((r) => r.id === id).length;
+}
+
+function relicPurchaseRemaining(relicId) {
+  const relic = RELICS.find((r) => r.id === relicId);
+  if (!relic) return 0;
+  const count = getOwnedRelicCount(relicId);
+  if (relic.quality === 'common') {
+    return Math.max(0, COMMON_DUPLICATE_LIMIT - count);
+  } else if (relic.quality === 'rare') {
+    const limit = difficultyLevel >= 12 ? 3 : 1;
+    return Math.max(0, limit - count);
+  }
+  return count > 0 ? 0 : 1;
+}
+
+function computeMaxPurchasableCount(id, price) {
+  const player = gameState.player;
+  if (!player) return 0;
+  const byGold = Math.floor(player.gold / price);
+  if (id.startsWith('potion:')) {
+    // 药水默认无次数上限，仅受金币限制
+    return byGold;
+  }
+  if (id.startsWith('relic:')) {
+    const relicId = id.split(':')[1];
+    const remain = relicPurchaseRemaining(relicId);
+    return Math.max(0, Math.min(byGold, remain));
+  }
+  return 0;
+}
+
+// 包装一层以便在购买前判断是否成功授予，不成功不扣钱
+function tryGrantRelic(state, relicId) {
+  const before = state.player.inventory.relics.length;
+  grantRelic(state, relicId);
+  return state.player.inventory.relics.length > before;
 }
 
 /* Battle system */
@@ -2120,6 +2275,13 @@ function setupBattleBonuses(state) {
     enemy.currentHp = Math.min(enemy.currentHp, enemy.maxHp);
     pushBattleLog('混沌戒指削弱了敌人。');
   }
+  if (player.stats.spellBreakerMinResist && battle.enemy) {
+    const before = battle.enemy.resist;
+    battle.enemy.resist = Math.max(before, player.stats.spellBreakerMinResist);
+    if (battle.enemy.resist !== before) {
+      pushBattleLog('法术崩坏者重塑了敌人的法术抗性。');
+    }
+  }
   if (player.stats.preemptiveWeakenChance && Math.random() < player.stats.preemptiveWeakenChance) {
     battle.enemyAttackPenalty = { turns: 2, multiplier: 0.5 };
     pushBattleLog('先发制人压制敌人，攻击力骤降。');
@@ -2224,7 +2386,8 @@ function resolveAttackPattern(pattern, isSkill, options = {}) {
     ? clamp(Math.floor((1 - player.currentHp / player.stats.maxHp) / 0.1) * 0.04, 0, 0.4)
     : 0;
   const blackTulipBonus = options.blackTulipBonus || 0;
-  const attackMultiplier = 1 + blackTulipBonus;
+  const physBuff = attackType === 'physical' ? getBuffValue(gameState.encounter.playerBuffs, 'physAttack') : 0;
+  const attackMultiplier = 1 + blackTulipBonus + physBuff;
   const attackPower =
     stats.attack *
     (1 + attackBuff + (player.tempEmpower || 0) + lowHpAttackBonus + berserkBonus) *
@@ -2271,7 +2434,14 @@ function resolveAttackPattern(pattern, isSkill, options = {}) {
     if (crit) {
       baseDamage = Math.floor(baseDamage * (1 + stats.critDamage));
       if (stats.destinyProc) {
-        const extra = Math.floor(enemy.currentHp * 0.1);
+        const raw = Math.floor(enemy.currentHp * 0.1);
+        const pen = { percent: stats.magicPenPercent || 0, flat: stats.magicPenFlat || 0 };
+        let extra = applyMagicDamage(raw, enemy.resist, pen);
+        extra *= 1 + (stats.magicDamageBonus || 0);
+        if (isSkill) {
+          extra *= 1 + (stats.skillMagicBonus || 0);
+        }
+        extra = Math.floor(extra);
         enemy.currentHp = Math.max(0, enemy.currentHp - extra);
         pushBattleLog(`天命触发，额外造成${extra}点法术伤害。`);
       }
@@ -2295,6 +2465,7 @@ function resolveAttackPattern(pattern, isSkill, options = {}) {
       elementHeart: stats.elementHeartDebuff,
       ruinDefenseShred: stats.ruinDefenseShred,
       skillResistShred: options.skillResistShred,
+      resistFlatShredOnHit: stats.resistFlatShredOnHit || 0,
       damageDealt: baseDamage,
       attackType
     });
@@ -2350,6 +2521,13 @@ function applyOnHitDebuffs(enemy, context) {
     enemy.resist = Math.max(0, enemy.resist - context.skillResistShred);
     if (enemy.resist !== prevResist) {
       logs.push(`奥术法典削弱敌人法抗${context.skillResistShred}点`);
+    }
+  }
+  if (context.resistFlatShredOnHit && context.resistFlatShredOnHit > 0) {
+    const prevResist = enemy.resist;
+    enemy.resist = Math.max(0, enemy.resist - context.resistFlatShredOnHit);
+    if (enemy.resist !== prevResist) {
+      logs.push(`法术崩坏者蚕食敌法抗（-${context.resistFlatShredOnHit}）`);
     }
   }
   logs.forEach((msg) => pushBattleLog(msg));
@@ -2490,7 +2668,7 @@ function executeEnemyAttack() {
     if (penalty?.turns > 0) {
       damageValue = Math.floor(damageValue * penalty.multiplier);
     }
-    const dodgeChance = clamp(player.stats.dodge + dodgeBuff, 0, 0.9);
+    const dodgeChance = clamp(player.stats.dodge + dodgeBuff, 0, 0.98);
     if (Math.random() < dodgeChance) {
       pushBattleLog('成功闪避攻击！');
       player.tempEmpower = (player.tempEmpower || 0) + (player.stats.empowerOnDodge || 0);
@@ -2726,6 +2904,14 @@ function executeSkillEffect(skill, isEcho = false, extra = {}) {
     const shield = Math.floor(gameState.player.stats.attack);
     gameState.player.shield = (gameState.player.shield || 0) + shield;
     pushBattleLog(`获得${shield}点护盾。`);
+  }
+  // 技能结束后触发“绿叶菜罐头”——下一回合物理攻击提升
+  if (!isEcho && extra.markManual) {
+    const bonus = gameState.player.stats.skillGrantsPhysBuff || 0;
+    if (bonus > 0) {
+      addTemporaryBuff(gameState, { type: 'physAttack', value: bonus, duration: 2 });
+      pushBattleLog('绿叶菜罐头助力：下回合物理攻击提升。');
+    }
   }
 }
 
@@ -3013,6 +3199,11 @@ function grantRelic(state, id) {
     state.flags = state.flags || {};
     state.flags.epiphanyGranted = true;
     for (let i = 0; i < 10; i++) {
+      state.player.level += 1;
+      onLevelUp(state);
+    }
+  } else if (relic.id === 'ambrosia') {
+    for (let i = 0; i < 30; i++) {
       state.player.level += 1;
       onLevelUp(state);
     }
