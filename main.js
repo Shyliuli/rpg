@@ -1,5 +1,9 @@
 /* Core utilities */
 import { clamp, randomInt, randomChoice, timestamp } from './src/core/utils.js';
+import { pwLinear, scaleStatsByDifficulty, applyHighDifficultyStatGrowth, applyPhysicalDamage, applyMagicDamage, applyBattleMultipliers, checkCrit } from './src/core/balance.js';
+import { HEROES } from './src/data/heroes.js';
+import { POTIONS } from './src/data/potions.js';
+import { RELIC_EFFECTS } from './src/data/relicEffects.js';
 
 const levelRequirement = (level) =>
   Math.floor(Math.min(5000, 50 * Math.pow(level, 1.1)));
@@ -15,70 +19,13 @@ import {
   DIFFICULTY_LEVELS,
   SEGMENT_MULTIPLIERS
 } from './src/core/constants.js';
-function pwLinear(level, base, perArray) {
-  // perArray length should be 6
-  const spans = [10, 20, 30, 40, 50, Infinity];
-  let L = Math.max(0, Math.floor(level));
-  let total = base;
-  for (let i = 0; i < 6 && L > 0; i++) {
-    const take = Math.min(L, spans[i] === Infinity ? L : spans[i]);
-    const perLevel = (perArray[i] || 0) * (SEGMENT_MULTIPLIERS[i] || 1);
-    total += take * perLevel;
-    L -= take;
-  }
-  let result = Math.floor(total);
-  // 150级后额外指数增益：按 1.010^(L-150) 平滑增强
-  const extraLevels = Math.max(0, Math.floor(level - 150));
-  if (extraLevels > 0) {
-    const exponentialBoost = Math.pow(1.010, extraLevels);
-    result = Math.floor(result * exponentialBoost);
-  }
-  return result;
-}
+// moved: pwLinear in src/core/balance.js
 
-function difficultyMultiplier() {
-  const d = difficultyLevel;
-  if (d <= 9) {
-    return 0.45 + (d * (0.55 / 9));
-  }
-  if (d <= 12) {
-    return 1 + 0.15 * (d - 9);
-  }
-  return 1.45 + 0.3 * (d - 12);
-}
+// moved: difficultyMultiplier to src/core/balance.js
 
-function scaleStatsByDifficulty(stats) {
-  const mult = difficultyMultiplier();
-  return {
-    hp: Math.max(1, Math.floor(stats.hp * mult)),
-    attack: Math.max(1, Math.floor(stats.attack * mult)),
-    defense: Math.max(0, Math.floor(stats.defense * mult)),
-    resist: Math.max(0, Math.floor(stats.resist * mult))
-  };
-}
+// moved: scaleStatsByDifficulty in src/core/balance.js
 
-function applyHighDifficultyStatGrowth(stats, level, baselineStats) {
-  if (!stats) return stats;
-  if (difficultyLevel < 9 || level <= 30) return stats;
-  const hpMultiplier = difficultyLevel >= 12 ? 3 : 1.5;
-  const attackMultiplier = difficultyLevel >= 12 ? 1.35 : 1;
-  const amplifyDelta = (key, multiplier, min) => {
-    if (typeof stats[key] !== 'number' || multiplier === 1) return;
-    const baseline =
-      baselineStats && typeof baselineStats[key] === 'number' ? baselineStats[key] : null;
-    if (baseline !== null) {
-      const delta = stats[key] - baseline;
-      if (delta > 0) {
-        stats[key] = Math.max(min, Math.floor(baseline + delta * multiplier));
-        return;
-      }
-    }
-    stats[key] = Math.max(min, Math.floor(stats[key] * multiplier));
-  };
-  amplifyDelta('hp', hpMultiplier, 1);
-  amplifyDelta('attack', attackMultiplier, 1);
-  return stats;
-}
+// moved: applyHighDifficultyStatGrowth in src/core/balance.js
 
 function isQualityUnlocked(quality) {
   if (quality === 'legendary') return difficultyLevel >= 6;
@@ -121,156 +68,9 @@ function relicDropMultiplierForDifficulty(quality) {
   return 1 + bonus;
 }
 
-/* Hero definitions */
-const HEROES = [
-  {
-    id: 'warrior',
-    name: '战士',
-    summary: '稳健坦克型，普攻为100%物理伤害，拥有蓄力与冲撞。',
-    stats: {
-      hp: { base: 100, per: 12 },
-      attack: { base: 25, per: 2 },
-      defense: { base: 25, per: 1.5 },
-      resist: { base: 35, per: 1 },
-      mana: { base: 50, per: 5 }
-    },
-    normalAttack: { type: 'physical', hits: [{ ratio: 1 }] },
-    skills: [
-      {
-        id: 'chargeUp',
-        name: '蓄力',
-        cost: 15,
-        description: '攻击力+30%，持续3回合',
-        type: 'buff'
-      },
-      {
-        id: 'bullRush',
-        name: '冲撞',
-        cost: 10,
-        description: '150%攻击+15%最大生命的物理伤害，自损5%生命',
-        type: 'attack'
-      }
-    ]
-  },
-  {
-    id: 'assassin',
-    name: '刺客',
-    summary: '高爆发，普攻为100%物理，技能背刺与迅捷。',
-    stats: {
-      hp: { base: 60, per: 10 },
-      attack: { base: 35, per: 4 },
-      defense: { base: 10, per: 1.5 },
-      resist: { base: 15, per: 1 },
-      mana: { base: 60, per: 5 }
-    },
-    normalAttack: { type: 'physical', hits: [{ ratio: 1 }] },
-    skills: [
-      {
-        id: 'backstab',
-        name: '背刺',
-        cost: 15,
-        description: '两段85%攻击力的物理伤害',
-        type: 'attack'
-      },
-      {
-        id: 'nimble',
-        name: '迅捷',
-        cost: 40,
-        description: '获得40%闪避，持续3回合',
-        type: 'buff'
-      }
-    ]
-  },
-  {
-    id: 'mage',
-    name: '法师',
-    summary: '法系爆发，普攻为两段55%法术伤害，技能毁灭与源泉。',
-    stats: {
-      hp: { base: 75, per: 10 },
-      attack: { base: 20, per: 3 },
-      defense: { base: 10, per: 1.5 },
-      resist: { base: 40, per: 1.5 },
-      mana: { base: 90, per: 5 }
-    },
-    normalAttack: {
-      type: 'magic',
-      hits: [
-        { ratio: 0.55 },
-        { ratio: 0.55 }
-      ]
-    },
-    skills: [
-      {
-        id: 'meteor',
-        name: '大荒星陨灭',
-        cost: 70,
-        description: '325%法术伤害，自身眩晕1回合',
-        type: 'attack'
-      },
-      {
-        id: 'lifeSpring',
-        name: '生命源泉',
-        cost: 20,
-        description: '回复200%攻击力生命，生成100%攻击力护盾',
-        type: 'support'
-      }
-    ]
-  }
-];
+/* Hero definitions moved to src/data/heroes.js */
 
-/* Potions and consumables */
-const POTIONS = [
-  {
-    id: 'smallHealth',
-    name: '小型生命药水',
-    heal: 50,
-    mana: 0,
-    price: 25,
-    description: '回复50点生命值。'
-  },
-  {
-    id: 'largeHealth',
-    name: '大型生命药水',
-    heal: 150,
-    mana: 0,
-    price: 60,
-    description: '回复150点生命值。'
-  },
-  {
-    id: 'smallMana',
-    name: '小型法力药水',
-    heal: 0,
-    mana: 30,
-    price: 20,
-    description: '回复30点蓝量。'
-  },
-  {
-    id: 'largeMana',
-    name: '大型法力药水',
-    heal: 0,
-    mana: 80,
-    price: 50,
-    description: '回复80点蓝量。'
-  },
-  {
-    id: 'luckyPotion',
-    name: '幸运药水',
-    heal: 0,
-    mana: 0,
-    price: 60,
-    description: '下一场战斗金币与经验+50%。',
-    effect: 'luckyNextBattle'
-  },
-  {
-    id: 'attributeBoost',
-    name: '属性增强剂',
-    heal: 0,
-    mana: 0,
-    price: 200,
-    description: '永久提升5攻击或10最大生命。',
-    effect: 'permanentChoice'
-  }
-];
+/* Potions moved to src/data/potions.js */
 
 /* Relic definitions */
 const RELICS = [
@@ -560,71 +360,7 @@ const RELICS = [
   }
 ];
 
-/* Relic mechanical effects subset (not every nuance is automated, but core bonuses are captured) */
-const RELIC_EFFECTS = {
-  warriorBadge: { attackPercent: 0.1 },
-  lifeAmulet: { hpPercent: 0.18 },
-  sapphireRing: { manaPercent: 0.2 },
-  ironBoots: { defensePercent: 0.15 },
-  clothArmor: { resistFlat: 10 },
-  luckyClover: { dodgeChance: 0.05 },
-  whetstone: { highHpBonus: 0.15 },
-  apprenticeNotes: { expBonus: 0.15 },
-  critGloves: { critChance: 0.08 },
-  regenRing: { postBattleHeal: 0.05 },
-  manaFlow: { battleStartMana: 10 },
-  thickHide: { defensePercent: 0.18, hpPercent: 0.05 },
-  razorEdge: { attackPercent: 0.18, defensePercent: -0.1 },
-  explorerMap: { goldBonus: 0.1 },
-  shieldEmitter: { battleShieldPercent: 0.15, battleShieldDuration: 2 },
-  dragonScale: { defenseFlat: 35, armorPen: 15 },
-  lichPhylactery: { resistFlat: 15, healOnKill: 0.05, magicPenFlat: 5 },
-  agileBoots: { dodgeChance: 0.1, empowerOnDodge: 0.3 },
-  arcaneCodex: { skillMagicBonus: 0.35, skillResistShred: 10 },
-  berserkerSoul: { berserkerStacks: true },
-  eliteHunter: { damageVsElite: 0.3, damageVsNormal: -0.1 },
-  manaTide: { manaPerTurn: 10, spellManaRefund: 5 },
-  bloodthirstBlade: { basicAttackLeech: 0.15 },
-  thornArmor: { thornsPercent: 0.15 },
-  wisdomBook: { expBonus: 0.45 },
-  preemptiveStrike: { battleStartStunChance: 0.2, preemptiveWeakenChance: 0.2 },
-  sourceOfLife: { healingBonus: 0.35 },
-  fortress: { defensePercent: 0.35, hpPercent: 0.25, attackPercent: -0.05 },
-  heartOfRage: { attackPercent: 0.5, hpPercent: -0.2, nullifyDefense: true },
-  adventureMap: { roamBattleDelta: 0.25, battleExpBonus: 0.2, dropUpgradeChance: 0.15 },
-  merchantFriend: { roamBattleDelta: -0.3, nonBattleReward: true, shopDiscount: 0.25 },
-  energyShield: { battleShieldPercent: 0.25, battleShieldDuration: 3 },
-  luckyDice: { randomBattleBuff: true },
-  shadowCloak: { dodgeChance: 0.2, shieldOnDodge: 0.3 },
-  revengeSpirit: { lowHpBuff: true },
-  timeHourglass: { deathSave: 'fullRevive' },
-  immortalWard: { deathSave: 'immortalWard' },
-  elementHeart: {
-    attackPercent: 0.25,
-    elementHeartDebuff: true
-  },
-  deathEye: { critChance: 0.15, critDamage: 0.5 },
-  warBanner: { attackPercent: 0.4, critChance: 0.35, hpPercent: -0.2 },
-  frostCore: { freezeOnHit: 0.35 },
-  sunEmblem: { turnStartMagic: 0.35 },
-  chaosRing: { enemyWeakenPercent: 0.15 },
-  bloodPrince: { lifeSteal: 0.3 },
-  destiny: { critChance: 0.2, destinyProc: true },
-  epiphanyCrystal: { allStatsPercent: 0.1, xpFixed: 1500, bonusLevels: 10 },
-  ruination: { ruinDamage: 0.08, defenseShred: 50 },
-  genesisStaff: { magicDamageBonus: 0.4, magicPenPercent: 0.3, skillDoubleChance: 0.2 },
-  greed: { goldBonus: 1.0, shopDiscount: 0.5, greedAttack: true },
-  omniRing: { allStatsPercent: 0.15, epicBorrowCount: 2 },
-  dreamRelic: { dreamCaster: true },
-  blackTulip: { blackTulip: true },
-  steelResolve: { steelResolve: true },
-  eternalEmber: { eternalEmber: true },
-  starlitBastion: { starlitBastion: true },
-  destinyAegis: { destinyWard: 3 },
-  spellBreaker: { resistFlatShredOnHit: 3, spellBreakerMinResist: 85 },
-  leafyCan: { skillGrantsPhysBuff: 0.45 },
-  ambrosia: { levelGrowthExpBase: 1.005, bonusLevels: 30 }
-};
+/* Relic effects moved to src/data/relicEffects.js */
 
 /* Enemy pools */
 const NORMAL_ENEMIES = [
@@ -2146,19 +1882,19 @@ function spawnEnemyFrom(template) {
       const tempState = { player: snapshot };
       updatePlayerStats(tempState);
       const scaledBaseline = template.stats(snapshot);
-      baselineStats = scaleStatsByDifficulty(scaledBaseline);
+      baselineStats = scaleStatsByDifficulty(scaledBaseline, difficultyLevel);
     }
-    info = scaleStatsByDifficulty(stats);
-    info = applyHighDifficultyStatGrowth(info, player.level, baselineStats);
+    info = scaleStatsByDifficulty(stats, difficultyLevel);
+    info = applyHighDifficultyStatGrowth(info, player.level, difficultyLevel, baselineStats);
     info.type = stats.type;
     info.hits = stats.hits;
     info.modifier = stats.modifier;
   } else {
     const stats = template.stats(level);
     const baselineStats =
-      level > 30 ? scaleStatsByDifficulty(template.stats(30)) : null;
-    info = scaleStatsByDifficulty(stats);
-    info = applyHighDifficultyStatGrowth(info, level, baselineStats);
+      level > 30 ? scaleStatsByDifficulty(template.stats(30), difficultyLevel) : null;
+    info = scaleStatsByDifficulty(stats, difficultyLevel);
+    info = applyHighDifficultyStatGrowth(info, level, difficultyLevel, baselineStats);
     info.type = stats.type;
     info.hits = stats.hits;
     info.modifier = stats.modifier;
@@ -2434,7 +2170,7 @@ function resolveAttackPattern(pattern, isSkill, options = {}) {
       );
       baseDamage = effectiveDamage;
     }
-    baseDamage = applyBattleMultipliers(baseDamage, enemy.tier);
+    baseDamage = applyBattleMultipliers(gameState, baseDamage, enemy.tier);
     const critChance = stats.critChance + critBuff + (lowHpBonusActive ? 0.2 : 0);
     const crit = checkCrit(critChance);
     if (crit) {
@@ -2520,44 +2256,7 @@ function handleBlackTulipStart(player) {
   player.usedManualSkillThisTurn = false;
 }
 
-function applyBattleMultipliers(baseDamage, tier) {
-  const stats = gameState.player.stats;
-  let damage = baseDamage;
-  if (tier === 'elite') {
-    damage *= 1 + (stats.damageVsElite || 0);
-  } else if (tier === 'normal') {
-    damage *= 1 + (stats.damageVsNormal || 0);
-  }
-  if (gameState.encounter?.tempRelics) {
-    gameState.encounter.tempRelics.forEach((id) => {
-      if (id === 'deathEye') {
-        damage *= 1.1;
-      } else if (id === 'elementHeart') {
-        damage *= 1.1;
-      }
-    });
-  }
-  return Math.floor(damage);
-}
-
-function applyPhysicalDamage(baseDamage, defense) {
-  const reduced = baseDamage - defense;
-  return Math.max(Math.floor(reduced), Math.floor(baseDamage * 0.05));
-}
-
-function applyMagicDamage(base, resist, penetration) {
-  let effectiveResist = resist;
-  if (penetration) {
-    if (penetration.percent) {
-      effectiveResist = Math.max(0, Math.floor(effectiveResist * (1 - penetration.percent)));
-    }
-    if (penetration.flat) {
-      effectiveResist = Math.max(0, effectiveResist - penetration.flat);
-    }
-  }
-  const multiplier = Math.max(1 - effectiveResist / 100, 0.05);
-  return Math.floor(base * multiplier);
-}
+// moved: applyBattleMultipliers/applyPhysicalDamage/applyMagicDamage to src/core/balance.js
 
 function dealDamageToEnemy(amount) {
   const enemy = gameState.encounter.enemy;
@@ -2577,9 +2276,7 @@ function dealDamageToEnemy(amount) {
   return amount;
 }
 
-function checkCrit(chance) {
-  return Math.random() < clamp(chance, 0, 0.95);
-}
+// moved: checkCrit to src/core/balance.js
 
 function endPlayerTurn() {
   if (!gameState.encounter || gameState.encounter.type !== 'battle') {
