@@ -95,7 +95,12 @@ function clampQualityToUnlocked(quality) {
 }
 
 function isEventUnlocked(event) {
-  return !event.minDifficulty || difficultyLevel >= event.minDifficulty;
+  if (event.minDifficulty && difficultyLevel < event.minDifficulty) return false;
+  if (event.minPlayerLevel) {
+    if (!gameState.player) return false;
+    if (gameState.player.level < event.minPlayerLevel) return false;
+  }
+  return true;
 }
 
 function relicDropMultiplierForDifficulty(quality) {
@@ -795,6 +800,7 @@ const EVENT_DEFS = [
     name: '你已成仙！',
     description: '大道已成，你将如何抉择？',
     once: true,
+    minPlayerLevel: 150,
     options: [
       {
         id: 'ascend',
