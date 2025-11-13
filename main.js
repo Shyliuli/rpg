@@ -1,8 +1,5 @@
 /* Core utilities */
-const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
-const randomInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
-const randomChoice = (list) => list[Math.floor(Math.random() * list.length)];
-const timestamp = () => new Date().toLocaleTimeString();
+import { clamp, randomInt, randomChoice, timestamp } from './src/core/utils.js';
 
 const levelRequirement = (level) =>
   Math.floor(Math.min(5000, 50 * Math.pow(level, 1.1)));
@@ -11,11 +8,13 @@ const hybridScale = (base, coeff, linearFactor, growth, level) =>
   base + coeff * (linearFactor * level + Math.pow(growth, level));
 
 let difficultyLevel = 9; // default n9
-const TIER_EDGES = [10, 30, 60, 100, 150];
-const QUALITY_ORDER = ['common', 'rare', 'epic', 'legendary'];
-const COMMON_DUPLICATE_LIMIT = 5;
-const DIFFICULTY_LEVELS = Array.from({ length: 16 }, (_, i) => i);
-const SEGMENT_MULTIPLIERS = [1, 1.2, 1.5, 2, 1.5, 1];
+import {
+  TIER_EDGES,
+  QUALITY_ORDER,
+  COMMON_DUPLICATE_LIMIT,
+  DIFFICULTY_LEVELS,
+  SEGMENT_MULTIPLIERS
+} from './src/core/constants.js';
 function pwLinear(level, base, perArray) {
   // perArray length should be 6
   const spans = [10, 20, 30, 40, 50, Infinity];
@@ -2505,39 +2504,7 @@ function resolveAttackPattern(pattern, isSkill, options = {}) {
 }
 
 function applyOnHitDebuffs(enemy, context) {
-  if (!enemy || enemy.currentHp <= 0) return;
-  const logs = [];
-  if (context.elementHeart) {
-    const prevResist = enemy.resist;
-    const prevAttack = enemy.attack;
-    enemy.resist = Math.max(0, enemy.resist - 15);
-    enemy.attack = Math.max(0, enemy.attack - 5);
-    if (enemy.resist !== prevResist || enemy.attack !== prevAttack) {
-      logs.push('元素之心蚕食敌人（法抗-15，攻击-5）');
-    }
-  }
-  if (context.ruinDefenseShred) {
-    const prevDefense = enemy.defense;
-    enemy.defense = Math.max(0, enemy.defense - context.ruinDefenseShred);
-    if (enemy.defense !== prevDefense) {
-      logs.push(`破败侵蚀，敌人防御-${context.ruinDefenseShred}`);
-    }
-  }
-  if (context.skillResistShred) {
-    const prevResist = enemy.resist;
-    enemy.resist = Math.max(0, enemy.resist - context.skillResistShred);
-    if (enemy.resist !== prevResist) {
-      logs.push(`奥术法典削弱敌人法抗${context.skillResistShred}点`);
-    }
-  }
-  if (context.resistFlatShredOnHit && context.resistFlatShredOnHit > 0) {
-    const prevResist = enemy.resist;
-    enemy.resist = Math.max(0, enemy.resist - context.resistFlatShredOnHit);
-    if (enemy.resist !== prevResist) {
-      logs.push(`法术崩坏者蚕食敌法抗（-${context.resistFlatShredOnHit}）`);
-    }
-  }
-  logs.forEach((msg) => pushBattleLog(msg));
+  battleEngine.applyOnHitDebuffs(enemy, context, (msg) => pushBattleLog(msg));
 }
 
 function handleBlackTulipStart(player) {
@@ -3375,3 +3342,5 @@ function startGame() {
 }
 
 document.addEventListener('DOMContentLoaded', init);
+import { BattleEngine } from './src/systems/battleEngine.js';
+const battleEngine = new BattleEngine();
